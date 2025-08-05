@@ -143,7 +143,24 @@ export class CompetitorAPI {
    * (viewport-based loading - backend uses fixed MyPlace location)
    */
   static async getNearby(params: { radius: number; industries?: string[]; limit?: number }): Promise<TransformedCompetitor[]> {
-    const { data } = await apiClient.get<ApiCompetitor[]>('/competitors/near', { params });
+    // Transform industries array to comma-separated string for backend
+    const queryParams: Record<string, string | number> = {
+      radius: params.radius
+    };
+    
+    // Add industries as comma-separated string if provided
+    if (params.industries && params.industries.length > 0) {
+      queryParams.industries = params.industries.join(',');
+    }
+    
+    // Add limit if provided
+    if (params.limit && params.limit > 0) {
+      queryParams.limit = params.limit;
+    }
+    
+    const { data } = await apiClient.get<ApiCompetitor[]>('/competitors/near', {
+      params: queryParams
+    });
     return data.map(transformCompetitor);
   }
 

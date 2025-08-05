@@ -15,8 +15,15 @@ export const useRadiusIndicator = ({ myPlace, radius, isVisible }: RadiusIndicat
       return null;
     }
 
-    // Convert km to approximate degrees (rough approximation: 1 degree ≈ 111 km)
-    const radiusInDegrees = radius / 111;
+    // More accurate radius calculation for visualization
+    // 1 degree latitude = 111 km (approximately)
+    // 1 degree longitude = 111 km * cos(latitude) (varies by latitude)
+    const lat = myPlace.latitude;
+    const radiusInDegreesLat = radius / 111;
+    const radiusInDegreesLng = radius / (111 * Math.cos(lat * Math.PI / 180));
+    
+    // Use the larger of the two for a more conservative circle
+    const radiusInDegrees = Math.max(radiusInDegreesLat, radiusInDegreesLng);
 
     return new ScatterplotLayer({
       id: 'radius-indicator',
@@ -27,11 +34,12 @@ export const useRadiusIndicator = ({ myPlace, radius, isVisible }: RadiusIndicat
       filled: true,
       radiusScale: 1,
       radiusMinPixels: 10,
-      radiusMaxPixels: 1000,
+      radiusMaxPixels: 2000, // Increase max for larger radius
       lineWidthMinPixels: 2,
       lineWidthMaxPixels: 4,
       getPosition: (d: TransformedPlace) => [d.longitude, d.latitude],
-      getRadius: () => radiusInDegrees * 50000, // Scale for visibility
+      // More accurate radius calculation in meters for deck.gl
+      getRadius: () => radius * 1000, // Convert km to meters for deck.gl
       getFillColor: [33, 150, 243, 25], // Light blue with low alpha
       getLineColor: [33, 150, 243, 120], // Blue border with medium alpha
       getLineWidth: 2,
@@ -54,6 +62,9 @@ export const useRadiusIndicator = ({ myPlace, radius, isVisible }: RadiusIndicat
         getFillColor: [radius],
         getLineColor: [radius],
       },
+      // Use geographic coordinate system for accurate radius
+      coordinateSystem: 1, // COORDINATE_SYSTEM.LNGLAT
+      radiusUnits: 'meters',
     });
   }, [myPlace, radius, isVisible]);
 };

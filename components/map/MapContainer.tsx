@@ -60,7 +60,7 @@ export default function MapContainer() {
   const viewportCompetitorsQuery = useViewportCompetitors(
     placeAnalysis.radius,
     placeAnalysis.industries.length > 0 ? placeAnalysis.industries : undefined,
-    100, // limit
+    undefined, // No limit - get all competitors in radius
     {
       enabled: competitorLoadingMode === 'viewport'
     }
@@ -154,16 +154,33 @@ export default function MapContainer() {
   const filteredCompetitors = useMemo(() => {
     if (!myPlace || !placeAnalysis.isVisible) return [];
     
-    // API already filters by radius and industries, but we can do additional client-side filtering
     let filtered = competitors;
     
-    // Additional filtering if needed (API handles most of this)
+    // Additional client-side radius filtering for safety (in case backend doesn't filter properly)
+    if (competitorLoadingMode === 'viewport' && placeAnalysis.radius > 0) {
+      filtered = filtered.filter((competitor: TransformedCompetitor) => {
+        // Calculate distance using Haversine formula
+        const R = 6371; // Earth's radius in km
+        const dLat = (competitor.latitude - myPlace.latitude) * Math.PI / 180;
+        const dLon = (competitor.longitude - myPlace.longitude) * Math.PI / 180;
+        const a =
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(myPlace.latitude * Math.PI / 180) * Math.cos(competitor.latitude * Math.PI / 180) *
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c; // Distance in km
+        
+        return distance <= placeAnalysis.radius;
+      });
+    }
+    
+    // Additional industry filtering if needed (API handles most of this)
     if (placeAnalysis.industries.length > 0) {
       filtered = filterCompetitorsByIndustries(filtered, placeAnalysis.industries);
     }
     
     return filtered;
-  }, [competitors, myPlace, placeAnalysis]);
+  }, [competitors, myPlace, placeAnalysis, competitorLoadingMode]);
 
   // Create place markers layer
   const placeLayer = useMemo(() => {

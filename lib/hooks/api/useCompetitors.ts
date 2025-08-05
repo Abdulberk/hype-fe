@@ -142,13 +142,14 @@ export const useViewportCompetitorsQuery = (
 export const useViewportCompetitors = (
   radius: number = 10,
   industries?: string[],
-  limit: number = 100,
+  limit?: number, // Optional limit parameter
   options?: Omit<UseQueryOptions<TransformedCompetitor[]>, 'queryKey' | 'queryFn'>
 ) => {
   const params: ViewportCompetitorParams = {
     radius,
     industries,
-    limit,
+    // Only include limit if it's provided and greater than 0
+    ...(limit && limit > 0 ? { limit } : {})
   };
 
   return useViewportCompetitorsQuery(params, {
