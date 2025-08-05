@@ -16,6 +16,7 @@ import {
 import { Competitor, Place, ParsedTradeArea, Zipcode } from '../../lib/types';
 import PlaceTooltip from './PlaceTooltip';
 import { usePulseLayer } from './PulseLayer';
+import { useRadiusIndicator } from './RadiusIndicator';
 import {
   usePlaceQuery,
   useViewportCompetitors,
@@ -276,6 +277,13 @@ export default function MapContainer() {
     filteredCompetitors
   });
 
+  // Create radius indicator layer (only show in viewport mode)
+  const radiusIndicatorLayer = useRadiusIndicator({
+    myPlace: myPlace || null,
+    radius: placeAnalysis.radius,
+    isVisible: competitorLoadingMode === 'viewport' && placeAnalysis.isVisible && !!myPlace
+  });
+
   // Create trade area layers
   const tradeAreaLayers = useMemo(() => {
     if (customerAnalysis.dataType !== 'tradeArea' || !customerAnalysis.isVisible) {
@@ -403,13 +411,16 @@ export default function MapContainer() {
       allLayers.push(homeZipcodesLayer); // Bottom layer
     }
     allLayers.push(...tradeAreaLayers); // Middle layers
+    if (radiusIndicatorLayer) {
+      allLayers.push(radiusIndicatorLayer); // Radius indicator layer
+    }
     if (pulseLayer) {
       allLayers.push(pulseLayer); // Pulse effect behind pins
     }
     allLayers.push(placeLayer); // Top layer (always visible)
     
     return allLayers.filter(Boolean);
-  }, [placeLayer, tradeAreaLayers, homeZipcodesLayer, pulseLayer]);
+  }, [placeLayer, tradeAreaLayers, homeZipcodesLayer, pulseLayer, radiusIndicatorLayer]);
 
   if (isLoading) {
     return (

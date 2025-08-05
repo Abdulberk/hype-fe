@@ -1,45 +1,26 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Minimal configuration for Vercel compatibility
+  
   // Enable compression for better performance
   compress: true,
   
-  // Optimize static file handling
-  assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
+  // Ensure proper routing for Vercel
+  trailingSlash: false,
   
-  // Turbopack configuration (stable in Next.js 15)
-  turbopack: {
-    resolveAlias: {
-      // Optimize module resolution
-      '@': './src',
-      '~': './public',
-    },
-  },
-  
-  // Webpack optimization for build performance
+  // Simplified webpack configuration for Vercel compatibility
   webpack: (config, { dev, isServer }) => {
-    // Build performance optimizations for React Query app
-    if (!dev) {
+    // Only apply optimizations in production and avoid complex chunk splitting on Vercel
+    if (!dev && !isServer) {
+      // Simple optimization that works well with Vercel
       config.optimization.splitChunks = {
-        ...config.optimization.splitChunks,
-        maxSize: 250000, // 250KB chunks max
+        chunks: 'all',
         cacheGroups: {
-          ...config.optimization.splitChunks.cacheGroups,
-          default: false,
-          vendors: false,
-          // Separate React Query from main bundle
-          reactQuery: {
-            test: /[\\/]node_modules[\\/]@tanstack[\\/]react-query/,
-            name: 'react-query',
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
             chunks: 'all',
-            priority: 10,
-          },
-          // Separate axios from main bundle
-          axios: {
-            test: /[\\/]node_modules[\\/]axios/,
-            name: 'axios',
-            chunks: 'all',
-            priority: 9,
           },
         },
       };
@@ -47,9 +28,6 @@ const nextConfig: NextConfig = {
     
     return config;
   },
-  
-  // Enable static optimization
-  trailingSlash: false,
   
   // Headers for API optimization
   async headers() {
@@ -65,6 +43,9 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  
+  // Ensure proper output for Vercel
+  output: 'standalone',
 };
 
 export default nextConfig;
