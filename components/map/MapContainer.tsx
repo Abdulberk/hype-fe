@@ -1,8 +1,18 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Typography, CircularProgress, Fade, Slide } from '@mui/material';
-import { MyLocation, Public } from '@mui/icons-material';
-import Map from 'react-map-gl';
+import { Box, Typography, CircularProgress, Fade, Slide, IconButton, Tooltip, Select, MenuItem, FormControl } from '@mui/material';
+import {
+  MyLocation,
+  Public,
+  ZoomIn,
+  ZoomOut,
+  Fullscreen,
+  FullscreenExit,
+  GpsFixed,
+  Layers,
+  RotateLeft
+} from '@mui/icons-material';
+import Map, { useMap } from 'react-map-gl';
 import { DeckGL } from '@deck.gl/react';
 import { ScatterplotLayer, PolygonLayer } from '@deck.gl/layers';
 import { useDataStore, DataStoreUtils } from '../../lib/stores/dataStore';
@@ -26,11 +36,14 @@ import {
   useSmartZipcodeLoader
 } from '../../lib/hooks/api';
 import { APIUtils } from '../../lib/services/apiService';
-import type { TransformedCompetitor, TransformedTradeArea, TransformedHomeZipcodes } from '../../lib/types/api';
+import type { TransformedCompetitor, TransformedTradeArea, TransformedHomeZipcodes, TransformedPlace } from '../../lib/types/api';
 
 const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 export default function MapContainer() {
+  // Map style state - must be at the top level before any conditional returns
+  const [mapStyle, setMapStyle] = useState(MAPBOX_STYLE);
+
   const {
     setInitializing,
     isInitializing,
@@ -211,9 +224,9 @@ export default function MapContainer() {
       opacity: 0.8,
       stroked: true,
       filled: true,
-      radiusScale: 6,
-      radiusMinPixels: 6,
-      radiusMaxPixels: 12,
+      radiusScale: 8,
+      radiusMinPixels: 8, // Minimum pixel size artırıldı
+      radiusMaxPixels: 25, // Maximum pixel size artırıldı
       lineWidthMinPixels: 2,
       getPosition: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => d.position,
       getRadius: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => {
@@ -221,9 +234,10 @@ export default function MapContainer() {
         const isSelected = !!selectedPlaces[pid];
         
         if (d.isMyPlace) {
-          return isSelected ? 16 : 12; // My Place: bigger when selected
+          // MyPlace: Daha büyük ve her zoom'da görünür
+          return isSelected ? 20 : 16;
         } else {
-          return isSelected ? 12 : 8; // Competitors: bigger when selected
+          return isSelected ? 12 : 8; // Competitors: normal boyut
         }
       },
       getFillColor: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => {
@@ -234,17 +248,21 @@ export default function MapContainer() {
         if (isSelected) {
           baseColor = '#FFD700'; // Bright gold/yellow for all selected pins
         } else if (d.isMyPlace) {
-          baseColor = COLOR_SCHEME.myPlace; // Green for unselected My Place
+          // MyPlace: Always bright green - never fades
+          baseColor = '#4CAF50'; // Bright green, more visible
         } else {
           baseColor = COLOR_SCHEME.competitor; // Blue for unselected competitors
         }
         
-        // Convert hex to RGB
+        // Convert hex to RGB with higher alpha for MyPlace
         const hex = baseColor.replace('#', '');
         const r = parseInt(hex.substr(0, 2), 16);
         const g = parseInt(hex.substr(2, 2), 16);
         const b = parseInt(hex.substr(4, 2), 16);
-        return [r, g, b, 255];
+        
+        // MyPlace gets full opacity, others get normal
+        const alpha = d.isMyPlace ? 255 : 200;
+        return [r, g, b, alpha];
       },
       getLineColor: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => {
         const pid = d.isMyPlace ? (d as Place).id : (d as Competitor).pid;
@@ -259,7 +277,13 @@ export default function MapContainer() {
       getLineWidth: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => {
         const pid = d.isMyPlace ? (d as Place).id : (d as Competitor).pid;
         const isSelected = !!selectedPlaces[pid];
-        return isSelected ? 3 : 2; // Thicker border for selected pins
+        
+        if (d.isMyPlace) {
+          // MyPlace: Always thick border for visibility
+          return isSelected ? 4 : 3;
+        } else {
+          return isSelected ? 3 : 2; // Normal thickness for competitors
+        }
       },
       onHover: (info: { object?: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }; x: number; y: number }) => {
         if (info.object) {
@@ -529,83 +553,22 @@ export default function MapContainer() {
       >
         <Map
           mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
-          mapStyle={MAPBOX_STYLE}
+          mapStyle={mapStyle}
         />
       </DeckGL>
+
+      {/* Map Controls */}
+      <MapControls
+        mapViewState={mapViewState}
+        setMapViewState={setMapViewState}
+        myPlace={myPlace || null}
+        competitorLoadingMode={competitorLoadingMode}
+        setCompetitorLoadingMode={setCompetitorLoadingMode}
+        mapStyle={mapStyle}
+        setMapStyle={setMapStyle}
+      />
       
       {tooltip && <PlaceTooltip tooltip={tooltip} />}
-      
-      {/* Competitor Loading Mode Toggle */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          zIndex: 1000,
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: '12px',
-          padding: '8px 16px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(0, 0, 0, 0.1)'
-        }}
-      >
-        <Typography variant="caption" color="text.secondary" fontWeight={500}>
-          Loading Mode:
-        </Typography>
-        <Box
-          sx={{
-            display: 'flex',
-            backgroundColor: 'rgba(0, 0, 0, 0.05)',
-            borderRadius: '8px',
-            padding: '2px',
-          }}
-        >
-          <Box
-            onClick={() => setCompetitorLoadingMode('viewport')}
-            sx={{
-              px: 2,
-              py: 1,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              backgroundColor: competitorLoadingMode === 'viewport' ? 'primary.main' : 'transparent',
-              color: competitorLoadingMode === 'viewport' ? 'white' : 'text.primary',
-              fontSize: '12px',
-              fontWeight: 500,
-              '&:hover': {
-                backgroundColor: competitorLoadingMode === 'viewport' ? 'primary.dark' : 'rgba(0, 0, 0, 0.05)'
-              }
-            }}
-          >
-            <MyLocation sx={{ fontSize: 16, mr: 0.5 }} />
-            Viewport
-          </Box>
-          <Box
-            onClick={() => setCompetitorLoadingMode('all')}
-            sx={{
-              px: 2,
-              py: 1,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              backgroundColor: competitorLoadingMode === 'all' ? 'primary.main' : 'transparent',
-              color: competitorLoadingMode === 'all' ? 'white' : 'text.primary',
-              fontSize: '12px',
-              fontWeight: 500,
-              '&:hover': {
-                backgroundColor: competitorLoadingMode === 'all' ? 'primary.dark' : 'rgba(0, 0, 0, 0.05)'
-              }
-            }}
-          >
-            <Public sx={{ fontSize: 16, mr: 0.5 }} />
-            All (1997)
-          </Box>
-        </Box>
-      </Box>
       
       {/* Animated notification for places without trade area data */}
       <Slide direction="down" in={showNoTradeAreaAlert} mountOnEnter unmountOnExit>
@@ -681,5 +644,383 @@ export default function MapContainer() {
         </Box>
       </Slide>
     </Box>
+  );
+}
+
+// Map Controls Component
+interface MapControlsProps {
+  mapViewState: typeof DEFAULT_MAP_VIEW | null;
+  setMapViewState: (viewState: typeof DEFAULT_MAP_VIEW) => void;
+  myPlace: TransformedPlace | null;
+  competitorLoadingMode: 'viewport' | 'all';
+  setCompetitorLoadingMode: (mode: 'viewport' | 'all') => void;
+  mapStyle: string;
+  setMapStyle: (style: string) => void;
+}
+
+function MapControls({
+  mapViewState,
+  setMapViewState,
+  myPlace,
+  competitorLoadingMode,
+  setCompetitorLoadingMode,
+  mapStyle,
+  setMapStyle
+}: MapControlsProps) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Zoom controls
+  const handleZoomIn = () => {
+    if (mapViewState) {
+      setMapViewState({
+        ...mapViewState,
+        zoom: Math.min(mapViewState.zoom + 1, 20)
+      });
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (mapViewState) {
+      setMapViewState({
+        ...mapViewState,
+        zoom: Math.max(mapViewState.zoom - 1, 0)
+      });
+    }
+  };
+
+  // Locate Me - Smooth cinematic transition to MyPlace
+  const handleLocateMe = () => {
+    if (!myPlace || !mapViewState) return;
+
+    const currentView = mapViewState;
+    const targetView = {
+      longitude: myPlace.longitude,
+      latitude: myPlace.latitude,
+      zoom: 14,
+      pitch: 0,
+      bearing: 0
+    };
+
+    // Smooth animation parameters
+    const duration = 2000; // 2 seconds
+    const startTime = Date.now();
+
+    // Easing function for smooth animation
+    const easeInOutCubic = (t: number): number => {
+      return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+    };
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easedProgress = easeInOutCubic(progress);
+
+      // Interpolate between current and target values
+      const newViewState = {
+        longitude: currentView.longitude + (targetView.longitude - currentView.longitude) * easedProgress,
+        latitude: currentView.latitude + (targetView.latitude - currentView.latitude) * easedProgress,
+        zoom: currentView.zoom + (targetView.zoom - currentView.zoom) * easedProgress,
+        pitch: currentView.pitch + (targetView.pitch - currentView.pitch) * easedProgress,
+        bearing: currentView.bearing + (targetView.bearing - currentView.bearing) * easedProgress,
+      };
+
+      setMapViewState(newViewState);
+
+      // Continue animation if not finished
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    // Start the animation
+    requestAnimationFrame(animate);
+  };
+
+  // Fullscreen toggle
+  const handleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  // Map styles data
+  const mapStyles = [
+    {
+      url: 'mapbox://styles/mapbox/streets-v12',
+      name: 'Streets',
+      description: 'Classic street view'
+    },
+    {
+      url: 'mapbox://styles/mapbox/satellite-streets-v12',
+      name: 'Satellite',
+      description: 'Real satellite imagery'
+    },
+    {
+      url: 'mapbox://styles/mapbox/light-v11',
+      name: 'Light',
+      description: 'Clean & bright'
+    },
+    {
+      url: 'mapbox://styles/mapbox/dark-v11',
+      name: 'Dark',
+      description: 'Night mode'
+    },
+    {
+      url: 'mapbox://styles/mapbox/outdoors-v12',
+      name: 'Outdoors',
+      description: 'Topographic details'
+    },
+    {
+      url: 'mapbox://styles/mapbox/navigation-day-v1',
+      name: 'Navigation',
+      description: 'GPS-style navigation'
+    }
+  ];
+
+  // Handle style change
+  const handleMapStyleChange = (styleUrl: string) => {
+    setMapStyle(styleUrl);
+  };
+
+  // Get current style name
+  const getCurrentStyleName = () => {
+    const currentStyle = mapStyles.find(style => style.url === mapStyle);
+    return currentStyle?.name || 'Streets';
+  };
+
+  // Reset rotation
+  const handleResetRotation = () => {
+    if (mapViewState) {
+      setMapViewState({
+        ...mapViewState,
+        bearing: 0,
+        pitch: 0
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  return (
+    <>
+      {/* Top Right - Competitor Loading Mode Toggle */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          zIndex: 1000,
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '12px',
+          padding: '8px 16px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(0, 0, 0, 0.1)'
+        }}
+      >
+        <Typography variant="caption" color="text.secondary" fontWeight={500}>
+          Loading Mode:
+        </Typography>
+        <Box
+          sx={{
+            display: 'flex',
+            backgroundColor: 'rgba(0, 0, 0, 0.05)',
+            borderRadius: '8px',
+            padding: '2px',
+          }}
+        >
+          <Box
+            onClick={() => setCompetitorLoadingMode('viewport')}
+            sx={{
+              px: 2,
+              py: 1,
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              backgroundColor: competitorLoadingMode === 'viewport' ? 'primary.main' : 'transparent',
+              color: competitorLoadingMode === 'viewport' ? 'white' : 'text.primary',
+              fontSize: '12px',
+              fontWeight: 500,
+              '&:hover': {
+                backgroundColor: competitorLoadingMode === 'viewport' ? 'primary.dark' : 'rgba(0, 0, 0, 0.05)'
+              }
+            }}
+          >
+            <MyLocation sx={{ fontSize: 16, mr: 0.5 }} />
+            Viewport
+          </Box>
+          <Box
+            onClick={() => setCompetitorLoadingMode('all')}
+            sx={{
+              px: 2,
+              py: 1,
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              backgroundColor: competitorLoadingMode === 'all' ? 'primary.main' : 'transparent',
+              color: competitorLoadingMode === 'all' ? 'white' : 'text.primary',
+              fontSize: '12px',
+              fontWeight: 500,
+              '&:hover': {
+                backgroundColor: competitorLoadingMode === 'all' ? 'primary.dark' : 'rgba(0, 0, 0, 0.05)'
+              }
+            }}
+          >
+            <Public sx={{ fontSize: 16, mr: 0.5 }} />
+            All (1997)
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Top Left - Map Style Toggle */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '20px',
+          left: '20px',
+          zIndex: 1000,
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '12px',
+          padding: '8px 16px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(0, 0, 0, 0.1)'
+        }}
+      >
+        <Typography variant="caption" color="text.secondary" fontWeight={500}>
+          Map Style:
+        </Typography>
+        <Box
+          sx={{
+            display: 'flex',
+            backgroundColor: 'rgba(0, 0, 0, 0.05)',
+            borderRadius: '8px',
+            padding: '2px',
+            gap: '2px'
+          }}
+        >
+          {mapStyles.slice(0, 4).map((style) => (
+            <Box
+              key={style.url}
+              onClick={() => handleMapStyleChange(style.url)}
+              sx={{
+                px: 2,
+                py: 1,
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                backgroundColor: mapStyle === style.url ? 'primary.main' : 'transparent',
+                color: mapStyle === style.url ? 'white' : 'text.primary',
+                fontSize: '12px',
+                fontWeight: 500,
+                '&:hover': {
+                  backgroundColor: mapStyle === style.url ? 'primary.dark' : 'rgba(0, 0, 0, 0.05)'
+                }
+              }}
+            >
+              {style.name}
+            </Box>
+          ))}
+        </Box>
+      </Box>
+
+      {/* Bottom Right - Zoom & Navigation Controls */}
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 1000,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1
+        }}
+      >
+        <Tooltip title="Zoom In" placement="left">
+          <IconButton
+            onClick={handleZoomIn}
+            sx={{
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 1)'
+              }
+            }}
+          >
+            <ZoomIn />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Zoom Out" placement="left">
+          <IconButton
+            onClick={handleZoomOut}
+            sx={{
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 1)'
+              }
+            }}
+          >
+            <ZoomOut />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Locate Me" placement="left">
+          <IconButton
+            onClick={handleLocateMe}
+            disabled={!myPlace}
+            sx={{
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 1)'
+              }
+            }}
+          >
+            <GpsFixed />
+          </IconButton>
+        </Tooltip>
+      </Box>
+
+      {/* Bottom Left - Fullscreen Toggle */}
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '20px',
+          zIndex: 1000
+        }}
+      >
+        <Tooltip title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"} placement="right">
+          <IconButton
+            onClick={handleFullscreen}
+            sx={{
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 1)'
+              }
+            }}
+          >
+            {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
+          </IconButton>
+        </Tooltip>
+      </Box>
+    </>
   );
 }
