@@ -17,8 +17,13 @@ import type {
 } from '../types/api';
 
 // API Configuration
-const API_BASE_URL = 'https://hype-api.vercel.app/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hype-api.vercel.app/api/v1';
 const MY_PLACE_ID = 'c660833d-77f0-4bfa-b8f9-4ac38f43ef6a';
+
+// Validation check for API base URL
+if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
+  console.warn('⚠️  NEXT_PUBLIC_API_BASE_URL not found in environment variables, using fallback URL');
+}
 
 // Axios instance with default config
 export const apiClient = axios.create({
