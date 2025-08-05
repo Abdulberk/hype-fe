@@ -6,22 +6,56 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset": "npx prisma migrate reset --force && npm run db:seed",
+    "upload:blob": "node scripts/upload-to-blob.mjs",
+    "build:fast": "npm run upload:blob && npm run build"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@deck.gl/geo-layers": "^9.1.1",
+    "@deck.gl/layers": "^9.1.1",
+    "@deck.gl/react": "^9.1.1",
+    "@emotion/react": "^11.13.5",
+    "@emotion/styled": "^11.13.5",
+    "@mui/icons-material": "^6.1.9",
+    "@mui/material": "^6.1.9",
+    "@prisma/adapter-better-sqlite3": "^6.13.0",
+    "@prisma/client": "^6.13.0",
+    "@tanstack/react-query": "^5.84.1",
+    "@tanstack/react-query-devtools": "^5.84.1",
+    "@turf/turf": "^7.1.0",
+    "@vercel/blob": "^1.1.1",
+    "axios": "^1.11.0",
+    "better-sqlite3": "^11.10.0",
+    "deck.gl": "^9.1.1",
+    "dotenv": "^17.2.1",
+    "framer-motion": "^12.23.12",
+    "mapbox-gl": "^3.8.0",
+    "next": "15.4.5",
+    "pako": "^2.1.0",
+    "prisma": "^6.13.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.4.5"
+    "react-map-gl": "^7.1.7",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
+    "@types/pako": "^2.0.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.4.5",
-    "@eslint/eslintrc": "^3"
+    "tailwindcss": "^4",
+    "tsx": "^4.20.3",
+    "typescript": "^5"
   }
 }
