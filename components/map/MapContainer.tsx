@@ -243,6 +243,10 @@ export default function MapContainer() {
       getFillColor: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => {
         const pid = d.isMyPlace ? (d as Place).id : (d as Competitor).pid;
         const isSelected = !!selectedPlaces[pid];
+        const hasTooltipOpen = tooltip && tooltip.object && (
+          ('id' in tooltip.object && tooltip.object.id === pid) ||
+          ('pid' in tooltip.object && tooltip.object.pid === pid)
+        );
         
         let baseColor;
         if (isSelected) {
@@ -261,24 +265,54 @@ export default function MapContainer() {
         const b = parseInt(hex.substr(4, 2), 16);
         
         // MyPlace gets full opacity, others get normal
-        const alpha = d.isMyPlace ? 255 : 200;
+        let alpha = d.isMyPlace ? 255 : 200;
+        
+        // Highlight pin with open tooltip
+        if (hasTooltipOpen) {
+          alpha = 255; // Full opacity for tooltip-active pin
+        }
+        
         return [r, g, b, alpha];
       },
       getLineColor: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => {
-        const pid = d.isMyPlace ? (d as Place).id : (d as Competitor).pid;
-        const isSelected = !!selectedPlaces[pid];
+        const currentPid = d.isMyPlace ? (d as Place).id : (d as Competitor).pid;
+        const isSelected = !!selectedPlaces[currentPid];
         
-        if (isSelected) {
-          return [255, 140, 0, 255]; // Dark orange border for selected pins (contrast with yellow)
+        // Debug tooltip detection
+        let hasTooltipOpen = false;
+        if (tooltip && tooltip.object) {
+          const tooltipPid = 'pid' in tooltip.object ? tooltip.object.pid :
+                            'id' in tooltip.object ? tooltip.object.id : null;
+          hasTooltipOpen = tooltipPid === currentPid;
+        }
+        
+        // Priority: Tooltip highlighting ALWAYS comes first, then selection state
+        if (hasTooltipOpen) {
+          // RED border for tooltip-active pin - HIGHEST priority
+          return [255, 0, 0, 255]; // Pure red for clear tooltip indication
+        } else if (isSelected) {
+          return [255, 140, 0, 255]; // Orange border for selected pins
         } else {
           return [255, 255, 255, 255]; // White border for normal pins
         }
       },
       getLineWidth: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => {
-        const pid = d.isMyPlace ? (d as Place).id : (d as Competitor).pid;
-        const isSelected = !!selectedPlaces[pid];
+        const currentPid = d.isMyPlace ? (d as Place).id : (d as Competitor).pid;
+        const isSelected = !!selectedPlaces[currentPid];
         
-        if (d.isMyPlace) {
+        // Check tooltip state
+        let hasTooltipOpen = false;
+        if (tooltip && tooltip.object) {
+          const tooltipPid = 'pid' in tooltip.object ? tooltip.object.pid :
+                            'id' in tooltip.object ? tooltip.object.id : null;
+          hasTooltipOpen = tooltipPid === currentPid;
+        }
+        
+        // Priority: Tooltip highlighting ALWAYS comes first, then selection state
+        if (hasTooltipOpen) {
+          // THICK border for tooltip-active pin - HIGHEST priority
+          return d.isMyPlace ? 8 : 6; // Extra thick for clear indication
+        } else if (d.isMyPlace) {
           // MyPlace: Always thick border for visibility
           return isSelected ? 4 : 3;
         } else {
@@ -287,7 +321,7 @@ export default function MapContainer() {
       },
       onClick: (info: { object?: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }; x: number; y: number }) => {
         if (info.object) {
-          // Show tooltip on click
+          // Only show tooltip on click - no automatic selection
           setTooltip({
             object: info.object,
             x: info.x,
@@ -296,7 +330,7 @@ export default function MapContainer() {
         }
       }
     });
-  }, [myPlace, filteredCompetitors, placeAnalysis.isVisible, selectedPlaces, setTooltip, togglePlaceSelection]);
+  }, [myPlace, filteredCompetitors, placeAnalysis.isVisible, selectedPlaces, tooltip, setTooltip, togglePlaceSelection]);
 
   // Create pulse layer for selected pins
   const pulseLayer = usePulseLayer({
