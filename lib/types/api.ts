@@ -91,6 +91,13 @@ export interface CompetitorNearParams {
   industries?: string[];
 }
 
+// Viewport mode parameters (radius-based from MyPlace)
+export interface ViewportCompetitorParams {
+  radius: number;
+  industries?: string[];
+  limit?: number;
+}
+
 export interface HomeZipcodesParams {
   minPercentage?: number;
   maxPercentage?: number;

@@ -57,12 +57,7 @@ export default function MapContainer() {
   const myPlaceQuery = usePlaceQuery();
   
   // Get competitors based on loading mode
-  const centerLng = mapViewState?.longitude || DEFAULT_MAP_VIEW.longitude;
-  const centerLat = mapViewState?.latitude || DEFAULT_MAP_VIEW.latitude;
-  
   const viewportCompetitorsQuery = useViewportCompetitors(
-    centerLng,
-    centerLat,
     placeAnalysis.radius,
     placeAnalysis.industries.length > 0 ? placeAnalysis.industries : undefined,
     100, // limit

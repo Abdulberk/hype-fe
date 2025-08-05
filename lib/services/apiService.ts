@@ -139,9 +139,10 @@ export class CompetitorAPI {
   }
 
   /**
-   * Get competitors near a location (main endpoint for viewport-based loading)
+   * Get competitors near MyPlace with radius and industry filters only
+   * (viewport-based loading - backend uses fixed MyPlace location)
    */
-  static async getNearby(params: CompetitorNearParams): Promise<TransformedCompetitor[]> {
+  static async getNearby(params: { radius: number; industries?: string[]; limit?: number }): Promise<TransformedCompetitor[]> {
     const { data } = await apiClient.get<ApiCompetitor[]>('/competitors/near', { params });
     return data.map(transformCompetitor);
   }

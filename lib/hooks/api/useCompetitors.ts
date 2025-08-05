@@ -1,26 +1,37 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import { CompetitorAPI } from '../../services/apiService';
-import type { TransformedCompetitor, CompetitorNearParams } from '../../types/api';
+import type { TransformedCompetitor, CompetitorNearParams, ViewportCompetitorParams } from '../../types/api';
 
 /**
- * Hook to get competitors near a location (main hook for viewport-based loading)
+ * Legacy hook for coordinate-based competitor searches (deprecated)
+ * Use useViewportCompetitorsQuery instead for radius-based searches from MyPlace
  */
 export const useCompetitorsNearQuery = (
-  params: CompetitorNearParams,
+  params: CompetitorNearParams & { radius: number }, // Make radius required
   options?: Omit<UseQueryOptions<TransformedCompetitor[]>, 'queryKey' | 'queryFn'>
 ) => {
+  // This is a legacy hook - for new implementations use useViewportCompetitorsQuery
+  console.warn('⚠️ useCompetitorsNearQuery is deprecated. Use useViewportCompetitorsQuery for radius-based searches.');
+  
   return useQuery({
-    queryKey: ['competitors', 'near', {
-      // Round coordinates to reduce cache misses
+    queryKey: ['competitors', 'near-legacy', {
       lng: Math.round(params.longitude * 100) / 100,
       lat: Math.round(params.latitude * 100) / 100,
       radius: params.radius,
       industries: params.industries?.sort()
     }],
-    queryFn: () => CompetitorAPI.getNearby(params),
-    staleTime: 1000 * 60 * 10, // 10 minutes - longer stale time
-    gcTime: 1000 * 60 * 60, // 1 hour - longer garbage collection
-    enabled: !!(params.longitude && params.latitude),
+    queryFn: () => {
+      // For legacy coordinate-based searches, we could implement a separate endpoint
+      // For now, just use the viewport method (radius-only from MyPlace)
+      return CompetitorAPI.getNearby({
+        radius: params.radius,
+        industries: params.industries,
+        limit: params.limit
+      });
+    },
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 60,
+    enabled: !!(params.longitude && params.latitude && params.radius),
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     refetchOnWindowFocus: false,
@@ -97,25 +108,50 @@ export const useAllCompetitorsQuery = (
 };
 
 /**
+ * Hook for viewport-based competitor loading (radius-based from MyPlace)
+ * Uses the new radius-only API that doesn't require longitude/latitude
+ */
+export const useViewportCompetitorsQuery = (
+  params: ViewportCompetitorParams,
+  options?: Omit<UseQueryOptions<TransformedCompetitor[]>, 'queryKey' | 'queryFn'>
+) => {
+  return useQuery({
+    queryKey: ['competitors', 'viewport', {
+      radius: params.radius,
+      industries: params.industries?.sort(),
+      limit: params.limit
+    }],
+    queryFn: () => CompetitorAPI.getNearby(params),
+    staleTime: 1000 * 60 * 15, // 15 minutes - very long stale time for viewport
+    gcTime: 1000 * 60 * 60 * 2, // 2 hours - keep in memory longer
+    enabled: !!(params.radius && params.radius > 0),
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    placeholderData: (previousData) => previousData, // Keep previous competitors while loading new ones
+    networkMode: 'offlineFirst', // Prefer cache over network
+    ...options,
+  });
+};
+
+/**
  * Custom hook for viewport-based competitor loading with smart defaults
+ * Updated to use radius-only parameters for MyPlace-based searches
  */
 export const useViewportCompetitors = (
-  longitude: number,
-  latitude: number,
   radius: number = 10,
   industries?: string[],
   limit: number = 100,
   options?: Omit<UseQueryOptions<TransformedCompetitor[]>, 'queryKey' | 'queryFn'>
 ) => {
-  const params: CompetitorNearParams = {
-    longitude,
-    latitude,
+  const params: ViewportCompetitorParams = {
     radius,
-    limit,
     industries,
+    limit,
   };
 
-  return useCompetitorsNearQuery(params, {
+  return useViewportCompetitorsQuery(params, {
     // Aggressive caching for viewport loading
     staleTime: 1000 * 60 * 15, // 15 minutes - very long stale time for viewport
     gcTime: 1000 * 60 * 60 * 2, // 2 hours - keep in memory longer
