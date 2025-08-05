@@ -18,6 +18,7 @@ import {
   SelectChangeEvent
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { LocationOn } from '@mui/icons-material';
 import { useUIStore } from '../../lib/stores/uiStore';
 import { useIndustriesQuery } from '../../lib/hooks/api';
 
@@ -35,8 +36,8 @@ export default function PlaceAnalysis() {
 
   const handleIndustryChange = (event: SelectChangeEvent<string[]>) => {
     const value = event.target.value;
-    setPlaceAnalysis({ 
-      industries: typeof value === 'string' ? value.split(',') : value 
+    setPlaceAnalysis({
+      industries: typeof value === 'string' ? value.split(',') : value
     });
   };
 
@@ -51,7 +52,29 @@ export default function PlaceAnalysis() {
         aria-controls="place-analysis-content"
         id="place-analysis-header"
       >
-        <Typography variant="subtitle1" fontWeight={600}>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            color: 'text.primary',
+            fontSize: '1.1rem'
+          }}
+        >
+          <Box
+            sx={{
+              p: 1,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(33, 150, 243, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <LocationOn sx={{ fontSize: 22, color: 'primary.main' }} />
+          </Box>
           Place Analysis
         </Typography>
       </AccordionSummary>

@@ -16,6 +16,7 @@ import {
   SelectChangeEvent
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { Analytics } from '@mui/icons-material';
 import { useUIStore } from '../../lib/stores/uiStore';
 import { DataType } from '../../lib/types';
 import { TRADE_AREA_PERCENTAGES } from '../../lib/constants';
@@ -24,11 +25,11 @@ export default function CustomerAnalysis() {
   const { customerAnalysis, setCustomerAnalysis } = useUIStore();
 
   const handleDataTypeChange = (event: SelectChangeEvent<DataType>) => {
-    setCustomerAnalysis({ 
+    setCustomerAnalysis({
       dataType: event.target.value as DataType,
       // Reset trade area percentages when switching data types
-      tradeAreaPercentages: event.target.value === 'tradeArea' 
-        ? customerAnalysis.tradeAreaPercentages 
+      tradeAreaPercentages: event.target.value === 'tradeArea'
+        ? customerAnalysis.tradeAreaPercentages
         : []
     });
   };
@@ -60,7 +61,29 @@ export default function CustomerAnalysis() {
         aria-controls="customer-analysis-content"
         id="customer-analysis-header"
       >
-        <Typography variant="subtitle1" fontWeight={600}>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            color: 'text.primary',
+            fontSize: '1.1rem'
+          }}
+        >
+          <Box
+            sx={{
+              p: 1,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(33, 150, 243, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <Analytics sx={{ fontSize: 22, color: 'primary.main' }} />
+          </Box>
           Customer Analysis
         </Typography>
       </AccordionSummary>
@@ -120,8 +143,8 @@ export default function CustomerAnalysis() {
             }
             label={
               <Typography variant="body2">
-                {customerAnalysis.isVisible 
-                  ? `Hide ${customerAnalysis.dataType === 'tradeArea' ? 'Trade Areas' : 'Home Zipcodes'}` 
+                {customerAnalysis.isVisible
+                  ? `Hide ${customerAnalysis.dataType === 'tradeArea' ? 'Trade Areas' : 'Home Zipcodes'}`
                   : `Show ${customerAnalysis.dataType === 'tradeArea' ? 'Trade Areas' : 'Home Zipcodes'}`
                 }
               </Typography>
