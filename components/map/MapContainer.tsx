@@ -285,22 +285,14 @@ export default function MapContainer() {
           return isSelected ? 3 : 2; // Normal thickness for competitors
         }
       },
-      onHover: (info: { object?: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }; x: number; y: number }) => {
+      onClick: (info: { object?: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }; x: number; y: number }) => {
         if (info.object) {
+          // Show tooltip on click
           setTooltip({
             object: info.object,
             x: info.x,
             y: info.y
           });
-        } else {
-          setTooltip(null);
-        }
-      },
-      onClick: (info: { object?: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] } }) => {
-        if (info.object) {
-          // Toggle place selection for trade area/home zipcodes visualization
-          togglePlaceSelection(info.object);
-          setTooltip(null); // Hide tooltip after click
         }
       }
     });
@@ -550,6 +542,12 @@ export default function MapContainer() {
         controller={true}
         layers={layers}
         onViewStateChange={({ viewState }) => setMapViewState(viewState as typeof DEFAULT_MAP_VIEW)}
+        onClick={(info) => {
+          // Close tooltip if clicking on empty space (no object)
+          if (!info.object) {
+            setTooltip(null);
+          }
+        }}
       >
         <Map
           mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
