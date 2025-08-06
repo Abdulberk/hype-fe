@@ -54,17 +54,18 @@ export const useUIStore = create<UIStore>()((set, _get) => ({
         
         // IMPORTANT: Clear all selected places and only keep MyPlace
         // This ensures only MyPlace appears selected (yellow/orange) on the map
-        const myPlaceObject: Place = {
+        // Note: We'll use a minimal placeholder here - the actual MyPlace data comes from API
+        const myPlacePlaceholder: Place = {
           id: MY_PLACE_ID,
-          name: 'MyPlace',
+          name: 'MyPlace', // This will be overridden by API data
           street_address: '',
           city: '',
           state: '',
           logo: null,
-          latitude: 0, // Will be updated when actual data loads
-          longitude: 0, // Will be updated when actual data loads
-          industry: 'MyPlace',
-          isTradeAreaAvailable: false,
+          latitude: 0, // This will be overridden by API data
+          longitude: 0, // This will be overridden by API data
+          industry: '',
+          isTradeAreaAvailable: true,
           isHomeZipcodesAvailable: true
         };
         
@@ -73,7 +74,7 @@ export const useUIStore = create<UIStore>()((set, _get) => ({
           customerAnalysis: newCustomerAnalysis,
           selectedPlaces: {
             [MY_PLACE_ID]: {
-              place: myPlaceObject,
+              place: myPlacePlaceholder, // This is just for state structure - real data comes from usePlaceQuery
               showTradeArea: false,
               showHomeZipcodes: true
             }

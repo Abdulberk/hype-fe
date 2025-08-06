@@ -4,6 +4,9 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { TooltipData, Competitor, Place } from '../../lib/types';
 import { useUIStore } from '../../lib/stores/uiStore';
 
+// Import MyPlace ID constant for simple comparison
+const MY_PLACE_ID = 'c660833d-77f0-4bfa-b8f9-4ac38f43ef6a';
+
 interface PlaceTooltipProps {
   tooltip: TooltipData;
 }
@@ -12,22 +15,12 @@ export default function PlaceTooltip({ tooltip }: PlaceTooltipProps) {
   const { object, x, y } = tooltip;
   const { customerAnalysis, selectedPlaces, layerVisibility, togglePlaceSelection } = useUIStore();
   
-  // Determine if this is "My Place" or a competitor
-  // Use the isMyPlace flag that's added in MapContainer, fallback to ID check
-  const isMyPlace = 'isMyPlace' in object && (object as Place & { isMyPlace: boolean }).isMyPlace;
-  const pid = isMyPlace ? (object as Place).id : (object as Competitor).pid;
-  
-  // Debug log to see what's happening
-  console.log('PlaceTooltip Debug:', {
-    objectName: object.name,
-    hasIsMyPlaceFlag: 'isMyPlace' in object,
-    isMyPlaceValue: (object as Place & { isMyPlace: boolean }).isMyPlace,
-    finalIsMyPlace: isMyPlace,
-    objectKeys: Object.keys(object)
-  });
+  // Simple approach: just check if the ID matches MY_PLACE_ID
+  const pid = 'id' in object ? object.id : (object as Competitor).pid;
+  const isMyPlace = pid === MY_PLACE_ID;
   const isSelected = !!selectedPlaces[pid];
   
-  // Check data availability with proper type assertions
+  // Check data availability - different fields for MyPlace vs Competitors
   const hasTradeAreaData = isMyPlace
     ? (object as Place).isTradeAreaAvailable
     : (object as Competitor).trade_area_activity;
@@ -84,7 +77,7 @@ export default function PlaceTooltip({ tooltip }: PlaceTooltipProps) {
             mb: 1
           }}
         >
-          {isMyPlace ? ' My Place' : '🏢 Competitor'}
+          {isMyPlace ? '🏠 My Place' : '🏢 Competitor'}
         </Typography>
         
         <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>

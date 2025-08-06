@@ -195,133 +195,83 @@ export default function MapContainer() {
     return filtered;
   }, [competitors, myPlace, placeAnalysis, competitorLoadingMode]);
 
-  // Create place markers layer
-  const placeLayer = useMemo(() => {
-    const data: Array<(Competitor | Place) & { isMyPlace: boolean; position: [number, number] }> = [];
-    
-    // Add "My Place" if available
-    if (myPlace && placeAnalysis.isVisible) {
-      data.push({
-        ...myPlace,
-        isMyPlace: true,
-        position: [myPlace.longitude, myPlace.latitude]
-      });
-    }
-    
-    // Add filtered competitors
-    filteredCompetitors.forEach((competitor: TransformedCompetitor) => {
-      data.push({
-        ...competitor,
-        isMyPlace: false,
-        position: [competitor.longitude, competitor.latitude]
-      });
-    });
+  // Create DEDICATED MyPlace layer - ALWAYS visible, completely independent
+  const myPlaceLayer = useMemo(() => {
+    if (!myPlace) return null;
+
+    // Ensure we use REAL API data, not placeholder data
+    const realMyPlaceData = {
+      ...myPlace, // This comes from API via usePlaceQuery
+      isMyPlace: true,
+      position: [myPlace.longitude, myPlace.latitude] as [number, number]
+    };
+
+    // Debug: Log to ensure we're using real API data
+    console.log('🏠 MyPlace Layer Data:', realMyPlaceData);
 
     return new ScatterplotLayer({
-      id: 'places-layer',
-      data,
+      id: 'myplace-layer',
+      data: [realMyPlaceData],
       pickable: true,
-      opacity: 0.8,
+      opacity: 1.0, // Full opacity for maximum visibility
       stroked: true,
       filled: true,
-      radiusScale: 8,
-      radiusMinPixels: 8, // Minimum pixel size artırıldı
-      radiusMaxPixels: 25, // Maximum pixel size artırıldı
-      lineWidthMinPixels: 2,
-      getPosition: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => d.position,
-      getRadius: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => {
-        const pid = d.isMyPlace ? (d as Place).id : (d as Competitor).pid;
+      radiusScale: 12,
+      radiusMinPixels: 18, // Extra large minimum for far zoom visibility
+      radiusMaxPixels: 40, // Extra large maximum for close zoom presence
+      lineWidthMinPixels: 3,
+      getPosition: (d: Place & { isMyPlace: boolean; position: [number, number] }) => d.position,
+      getRadius: () => {
+        const pid = myPlace.id;
+        const isSelected = !!selectedPlaces[pid];
+        // MyPlace: ALWAYS prominently sized, even bigger when selected
+        return isSelected ? 32 : 26; // Very large base size
+      },
+      getFillColor: () => {
+        // MyPlace: ALWAYS bright green, NEVER changes color
+        return [76, 175, 80, 255]; // Bright green with full opacity
+      },
+      getLineColor: () => {
+        const pid = myPlace.id;
         const isSelected = !!selectedPlaces[pid];
         
-        if (d.isMyPlace) {
-          // MyPlace: Daha büyük ve her zoom'da görünür
-          return isSelected ? 20 : 16;
-        } else {
-          return isSelected ? 12 : 8; // Competitors: normal boyut
-        }
-      },
-      getFillColor: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => {
-        const pid = d.isMyPlace ? (d as Place).id : (d as Competitor).pid;
-        const isSelected = !!selectedPlaces[pid];
-        const hasTooltipOpen = tooltip && tooltip.object && (
-          ('id' in tooltip.object && tooltip.object.id === pid) ||
-          ('pid' in tooltip.object && tooltip.object.pid === pid)
-        );
-        
-        let baseColor;
-        if (isSelected) {
-          baseColor = '#FFD700'; // Bright gold/yellow for all selected pins
-        } else if (d.isMyPlace) {
-          // MyPlace: Always bright green - never fades
-          baseColor = '#4CAF50'; // Bright green, more visible
-        } else {
-          baseColor = COLOR_SCHEME.competitor; // Blue for unselected competitors
-        }
-        
-        // Convert hex to RGB with higher alpha for MyPlace
-        const hex = baseColor.replace('#', '');
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
-        
-        // MyPlace gets full opacity, others get normal
-        let alpha = d.isMyPlace ? 255 : 200;
-        
-        // Highlight pin with open tooltip
-        if (hasTooltipOpen) {
-          alpha = 255; // Full opacity for tooltip-active pin
-        }
-        
-        return [r, g, b, alpha];
-      },
-      getLineColor: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => {
-        const currentPid = d.isMyPlace ? (d as Place).id : (d as Competitor).pid;
-        const isSelected = !!selectedPlaces[currentPid];
-        
-        // Debug tooltip detection
+        // Check if tooltip is open for MyPlace
         let hasTooltipOpen = false;
         if (tooltip && tooltip.object) {
-          const tooltipPid = 'pid' in tooltip.object ? tooltip.object.pid :
-                            'id' in tooltip.object ? tooltip.object.id : null;
-          hasTooltipOpen = tooltipPid === currentPid;
+          const tooltipPid = 'id' in tooltip.object ? tooltip.object.id : null;
+          hasTooltipOpen = tooltipPid === pid;
         }
         
-        // Priority: Tooltip highlighting ALWAYS comes first, then selection state
         if (hasTooltipOpen) {
-          // RED border for tooltip-active pin - HIGHEST priority
-          return [255, 0, 0, 255]; // Pure red for clear tooltip indication
+          // RED border for tooltip indication
+          return [255, 0, 0, 255];
         } else if (isSelected) {
-          return [255, 140, 0, 255]; // Orange border for selected pins
+          // Green glow when selected (matches fill)
+          return [76, 175, 80, 255];
         } else {
-          return [255, 255, 255, 255]; // White border for normal pins
+          // White contrast border for unselected MyPlace
+          return [255, 255, 255, 255];
         }
       },
-      getLineWidth: (d: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }) => {
-        const currentPid = d.isMyPlace ? (d as Place).id : (d as Competitor).pid;
-        const isSelected = !!selectedPlaces[currentPid];
+      getLineWidth: () => {
+        const pid = myPlace.id;
+        const isSelected = !!selectedPlaces[pid];
         
-        // Check tooltip state
+        // Check if tooltip is open for MyPlace
         let hasTooltipOpen = false;
         if (tooltip && tooltip.object) {
-          const tooltipPid = 'pid' in tooltip.object ? tooltip.object.pid :
-                            'id' in tooltip.object ? tooltip.object.id : null;
-          hasTooltipOpen = tooltipPid === currentPid;
+          const tooltipPid = 'id' in tooltip.object ? tooltip.object.id : null;
+          hasTooltipOpen = tooltipPid === pid;
         }
         
-        // Priority: Tooltip highlighting ALWAYS comes first, then selection state
         if (hasTooltipOpen) {
-          // THICK border for tooltip-active pin - HIGHEST priority
-          return d.isMyPlace ? 8 : 6; // Extra thick for clear indication
-        } else if (d.isMyPlace) {
-          // MyPlace: Always thick border for visibility
-          return isSelected ? 4 : 3;
+          return 12; // Extra thick for tooltip indication
         } else {
-          return isSelected ? 3 : 2; // Normal thickness for competitors
+          return isSelected ? 8 : 6; // Thick base border, even thicker when selected
         }
       },
-      onClick: (info: { object?: (Competitor | Place) & { isMyPlace: boolean; position: [number, number] }; x: number; y: number }) => {
+      onClick: (info: { object?: Place & { isMyPlace: boolean; position: [number, number] }; x: number; y: number }) => {
         if (info.object) {
-          // Only show tooltip on click - no automatic selection
           setTooltip({
             object: info.object,
             x: info.x,
@@ -330,7 +280,86 @@ export default function MapContainer() {
         }
       }
     });
-  }, [myPlace, filteredCompetitors, placeAnalysis.isVisible, selectedPlaces, tooltip, setTooltip, togglePlaceSelection]);
+  }, [myPlace, selectedPlaces, tooltip, setTooltip]);
+
+  // Create competitors-only layer
+  const competitorsLayer = useMemo(() => {
+    const data = filteredCompetitors.map((competitor: TransformedCompetitor) => ({
+      ...competitor,
+      isMyPlace: false,
+      position: [competitor.longitude, competitor.latitude]
+    }));
+
+    return new ScatterplotLayer({
+      id: 'competitors-layer',
+      data,
+      pickable: true,
+      opacity: 0.9,
+      stroked: true,
+      filled: true,
+      radiusScale: 10,
+      radiusMinPixels: 10,
+      radiusMaxPixels: 30,
+      lineWidthMinPixels: 2,
+      getPosition: (d: TransformedCompetitor & { isMyPlace: boolean; position: [number, number] }) => d.position,
+      getRadius: (d: TransformedCompetitor & { isMyPlace: boolean; position: [number, number] }) => {
+        const pid = d.pid;
+        const isSelected = !!selectedPlaces[pid];
+        return isSelected ? 12 : 8; // Competitors: normal sizing
+      },
+      getFillColor: (d: TransformedCompetitor & { isMyPlace: boolean; position: [number, number] }) => {
+        const pid = d.pid;
+        const isSelected = !!selectedPlaces[pid];
+        const hasTooltipOpen = tooltip && tooltip.object && 'pid' in tooltip.object && tooltip.object.pid === pid;
+        
+        if (isSelected) {
+          // Selected competitors: Gold color
+          return [255, 215, 0, 255];
+        } else {
+          // Normal competitors: Blue
+          const hex = COLOR_SCHEME.competitor.replace('#', '');
+          const r = parseInt(hex.substr(0, 2), 16);
+          const g = parseInt(hex.substr(2, 2), 16);
+          const b = parseInt(hex.substr(4, 2), 16);
+          const alpha = hasTooltipOpen ? 255 : 200;
+          return [r, g, b, alpha];
+        }
+      },
+      getLineColor: (d: TransformedCompetitor & { isMyPlace: boolean; position: [number, number] }) => {
+        const pid = d.pid;
+        const isSelected = !!selectedPlaces[pid];
+        const hasTooltipOpen = tooltip && tooltip.object && 'pid' in tooltip.object && tooltip.object.pid === pid;
+        
+        if (hasTooltipOpen) {
+          return [255, 0, 0, 255]; // Red for tooltip
+        } else if (isSelected) {
+          return [255, 140, 0, 255]; // Orange for selected
+        } else {
+          return [255, 255, 255, 200]; // White for normal
+        }
+      },
+      getLineWidth: (d: TransformedCompetitor & { isMyPlace: boolean; position: [number, number] }) => {
+        const pid = d.pid;
+        const isSelected = !!selectedPlaces[pid];
+        const hasTooltipOpen = tooltip && tooltip.object && 'pid' in tooltip.object && tooltip.object.pid === pid;
+        
+        if (hasTooltipOpen) {
+          return 6; // Thick for tooltip
+        } else {
+          return isSelected ? 3 : 2; // Normal thickness
+        }
+      },
+      onClick: (info: { object?: TransformedCompetitor & { isMyPlace: boolean; position: [number, number] }; x: number; y: number }) => {
+        if (info.object) {
+          setTooltip({
+            object: info.object,
+            x: info.x,
+            y: info.y
+          });
+        }
+      }
+    });
+  }, [filteredCompetitors, selectedPlaces, tooltip, setTooltip]);
 
   // Create pulse layer for selected pins
   const pulseLayer = usePulseLayer({
@@ -479,10 +508,15 @@ export default function MapContainer() {
     if (pulseLayer) {
       allLayers.push(pulseLayer); // Pulse effect behind pins
     }
-    allLayers.push(placeLayer); // Top layer (always visible)
+    if (competitorsLayer) {
+      allLayers.push(competitorsLayer); // Competitors layer
+    }
+    if (myPlaceLayer) {
+      allLayers.push(myPlaceLayer); // MyPlace layer - ALWAYS ON TOP, ALWAYS VISIBLE
+    }
     
     return allLayers.filter(Boolean);
-  }, [placeLayer, tradeAreaLayers, homeZipcodesLayer, pulseLayer, radiusIndicatorLayer]);
+  }, [competitorsLayer, myPlaceLayer, tradeAreaLayers, homeZipcodesLayer, pulseLayer, radiusIndicatorLayer]);
 
   if (isLoading) {
     return (
