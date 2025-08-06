@@ -13,8 +13,18 @@ export default function PlaceTooltip({ tooltip }: PlaceTooltipProps) {
   const { customerAnalysis, selectedPlaces, layerVisibility, togglePlaceSelection } = useUIStore();
   
   // Determine if this is "My Place" or a competitor
-  const isMyPlace = 'id' in object; // My place has 'id', competitors have 'pid'
+  // Use the isMyPlace flag that's added in MapContainer, fallback to ID check
+  const isMyPlace = 'isMyPlace' in object && (object as Place & { isMyPlace: boolean }).isMyPlace;
   const pid = isMyPlace ? (object as Place).id : (object as Competitor).pid;
+  
+  // Debug log to see what's happening
+  console.log('PlaceTooltip Debug:', {
+    objectName: object.name,
+    hasIsMyPlaceFlag: 'isMyPlace' in object,
+    isMyPlaceValue: (object as Place & { isMyPlace: boolean }).isMyPlace,
+    finalIsMyPlace: isMyPlace,
+    objectKeys: Object.keys(object)
+  });
   const isSelected = !!selectedPlaces[pid];
   
   // Check data availability with proper type assertions

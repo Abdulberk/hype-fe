@@ -42,9 +42,6 @@ export const useUIStore = create<UIStore>()((set, _get) => ({
   setCustomerAnalysis: (filters: Partial<CustomerAnalysisFilters>) => {
     set(state => {
       const newCustomerAnalysis = { ...state.customerAnalysis, ...filters };
-      
-      // Update selected places visibility based on new customer analysis settings
-      const updatedSelectedPlaces = { ...state.selectedPlaces };
       const updatedLayerVisibility = { ...state.layerVisibility };
       
       // Case Study Requirement: When Home Zipcodes is selected, hide all trade areas and show only MyPlace home zipcodes
@@ -55,41 +52,38 @@ export const useUIStore = create<UIStore>()((set, _get) => ({
         // Set home zipcodes to show only MyPlace
         updatedLayerVisibility.homeZipcodes = MY_PLACE_ID;
         
-        // Update all selected places: disable trade areas, enable home zipcodes only for MyPlace
-        Object.entries(state.selectedPlaces).forEach(([pid, selectedPlace]) => {
-          updatedSelectedPlaces[pid] = {
-            ...selectedPlace,
-            showTradeArea: false,
-            showHomeZipcodes: pid === MY_PLACE_ID
-          };
-        });
+        // IMPORTANT: Clear all selected places and only keep MyPlace
+        // This ensures only MyPlace appears selected (yellow/orange) on the map
+        const myPlaceObject: Place = {
+          id: MY_PLACE_ID,
+          name: 'MyPlace',
+          street_address: '',
+          city: '',
+          state: '',
+          logo: null,
+          latitude: 0, // Will be updated when actual data loads
+          longitude: 0, // Will be updated when actual data loads
+          industry: 'MyPlace',
+          isTradeAreaAvailable: false,
+          isHomeZipcodesAvailable: true
+        };
         
-        // Ensure MyPlace is added to selectedPlaces if not already there
-        if (!updatedSelectedPlaces[MY_PLACE_ID]) {
-          // Create a proper Place object for MyPlace
-          // The actual place data will be fetched by React Query hooks when needed
-          const myPlaceObject: Place = {
-            id: MY_PLACE_ID,
-            name: 'MyPlace',
-            street_address: '',
-            city: '',
-            state: '',
-            logo: null,
-            latitude: 0, // Will be updated when actual data loads
-            longitude: 0, // Will be updated when actual data loads
-            industry: 'MyPlace',
-            isTradeAreaAvailable: false,
-            isHomeZipcodesAvailable: true
-          };
-          
-          updatedSelectedPlaces[MY_PLACE_ID] = {
-            place: myPlaceObject,
-            showTradeArea: false,
-            showHomeZipcodes: true
-          };
-        }
+        // Return state with only MyPlace selected
+        return {
+          customerAnalysis: newCustomerAnalysis,
+          selectedPlaces: {
+            [MY_PLACE_ID]: {
+              place: myPlaceObject,
+              showTradeArea: false,
+              showHomeZipcodes: true
+            }
+          },
+          layerVisibility: updatedLayerVisibility
+        };
       } else {
         // Normal behavior for other data types
+        const updatedSelectedPlaces = { ...state.selectedPlaces };
+        
         Object.entries(state.selectedPlaces).forEach(([pid, selectedPlace]) => {
           const showTradeArea = newCustomerAnalysis.dataType === 'tradeArea' && newCustomerAnalysis.isVisible;
           const showHomeZipcodes = newCustomerAnalysis.dataType === 'homeZipcodes' && newCustomerAnalysis.isVisible;
@@ -121,13 +115,13 @@ export const useUIStore = create<UIStore>()((set, _get) => ({
             updatedLayerVisibility.homeZipcodes = null;
           }
         });
+        
+        return {
+          customerAnalysis: newCustomerAnalysis,
+          selectedPlaces: updatedSelectedPlaces,
+          layerVisibility: updatedLayerVisibility
+        };
       }
-      
-      return {
-        customerAnalysis: newCustomerAnalysis,
-        selectedPlaces: updatedSelectedPlaces,
-        layerVisibility: updatedLayerVisibility
-      };
     });
   },
 
