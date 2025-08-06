@@ -128,6 +128,8 @@ export interface TransformedPlace {
   industry: string;
   isTradeAreaAvailable: boolean;
   isHomeZipcodesAvailable: boolean;
+  hasTradeArea: boolean;
+  hasHomeZipcodes: boolean;
 }
 
 export interface TransformedCompetitor {
@@ -143,6 +145,8 @@ export interface TransformedCompetitor {
   trade_area_activity: boolean;
   home_locations_activity: boolean;
   distance: number;
+  hasTradeArea: boolean;
+  hasHomeZipcodes: boolean;
 }
 
 export interface TransformedTradeArea {

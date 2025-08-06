@@ -25,13 +25,15 @@ export default function CustomerAnalysis() {
   const { customerAnalysis, setCustomerAnalysis } = useUIStore();
 
   const handleDataTypeChange = (event: SelectChangeEvent<DataType>) => {
-    setCustomerAnalysis({
-      dataType: event.target.value as DataType,
-      // Reset trade area percentages when switching data types
-      tradeAreaPercentages: event.target.value === 'tradeArea'
-        ? customerAnalysis.tradeAreaPercentages
-        : []
-    });
+    const newDataType = event.target.value;
+    if (newDataType === 'tradeArea' || newDataType === 'homeZipcodes') {
+      setCustomerAnalysis({
+        dataType: newDataType,
+        tradeAreaPercentages: newDataType === 'tradeArea'
+          ? customerAnalysis.tradeAreaPercentages
+          : []
+      });
+    }
   };
 
   const handleTradeAreaPercentageChange = (percentage: number) => (
@@ -90,7 +92,6 @@ export default function CustomerAnalysis() {
       
       <AccordionDetails>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* Data Type Selection */}
           <FormControl fullWidth size="small">
             <InputLabel id="data-type-select-label">Data Type</InputLabel>
             <Select
@@ -104,7 +105,6 @@ export default function CustomerAnalysis() {
             </Select>
           </FormControl>
 
-          {/* Trade Area Percentage Options */}
           {customerAnalysis.dataType === 'tradeArea' && (
             <Box>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
@@ -132,7 +132,6 @@ export default function CustomerAnalysis() {
             </Box>
           )}
 
-          {/* Visibility Toggle */}
           <FormControlLabel
             control={
               <Switch
@@ -151,7 +150,6 @@ export default function CustomerAnalysis() {
             }
           />
 
-          {/* Info Text */}
           <Typography variant="caption" color="text.secondary">
             {customerAnalysis.dataType === 'tradeArea'
               ? 'Select trade area percentages to visualize customer catchment areas. Multiple areas can be shown simultaneously.'

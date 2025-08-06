@@ -25,7 +25,6 @@ import { useIndustriesQuery } from '../../lib/hooks/api';
 export default function PlaceAnalysis() {
   const { placeAnalysis, setPlaceAnalysis } = useUIStore();
   
-  // Get industries from React Query hook
   const industriesQuery = useIndustriesQuery();
   const industries = industriesQuery.data || [];
 
@@ -81,7 +80,6 @@ export default function PlaceAnalysis() {
       
       <AccordionDetails>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* Radius Filter */}
           <TextField
             fullWidth
             label="Radius (miles)"
@@ -96,7 +94,6 @@ export default function PlaceAnalysis() {
             variant="outlined"
           />
 
-          {/* Industry Filter */}
           <FormControl fullWidth size="small">
             <InputLabel id="industry-select-label">Industries</InputLabel>
             <Select
@@ -135,7 +132,6 @@ export default function PlaceAnalysis() {
             </Select>
           </FormControl>
 
-          {/* Visibility Toggle */}
           <FormControlLabel
             control={
               <Switch
@@ -151,7 +147,6 @@ export default function PlaceAnalysis() {
             }
           />
 
-          {/* Info Text */}
           <Typography variant="caption" color="text.secondary">
             Filter competitors around &ldquo;My Place&rdquo; by distance and industry categories.
           </Typography>

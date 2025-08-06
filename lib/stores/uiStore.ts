@@ -57,16 +57,18 @@ export const useUIStore = create<UIStore>()((set, _get) => ({
         // Note: We'll use a minimal placeholder here - the actual MyPlace data comes from API
         const myPlacePlaceholder: Place = {
           id: MY_PLACE_ID,
-          name: 'MyPlace', // This will be overridden by API data
+          name: 'MyPlace',
           street_address: '',
           city: '',
           state: '',
           logo: null,
-          latitude: 0, // This will be overridden by API data
-          longitude: 0, // This will be overridden by API data
+          latitude: 0,
+          longitude: 0,
           industry: '',
           isTradeAreaAvailable: true,
-          isHomeZipcodesAvailable: true
+          isHomeZipcodesAvailable: true,
+          hasTradeArea: true,
+          hasHomeZipcodes: true,
         };
         
         // Return state with only MyPlace selected

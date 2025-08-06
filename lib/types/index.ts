@@ -9,35 +9,65 @@ export interface Polygon {
   coordinates: number[][][];
 }
 
-// Place data types
-export interface Place {
-  id: string;
+// Base location entity
+interface BaseLocationEntity {
   name: string;
   street_address: string;
   city: string;
-  state: string;
   logo: string | null;
   longitude: number;
   latitude: number;
+}
+
+// Data availability interface
+interface DataAvailability {
+  hasTradeArea: boolean;
+  hasHomeZipcodes: boolean;
+}
+
+// Place data types
+export interface Place extends BaseLocationEntity, DataAvailability {
+  id: string;
+  state: string;
   industry: string;
   isTradeAreaAvailable: boolean;
   isHomeZipcodesAvailable: boolean;
+  hasTradeArea: boolean;
+  hasHomeZipcodes: boolean;
 }
 
-export interface Competitor {
+export interface Competitor extends BaseLocationEntity, DataAvailability {
   pid: string;
-  name: string;
-  street_address: string;
-  city: string;
   region: string;
-  logo: string | null;
-  latitude: number;
-  longitude: number;
   sub_category: string;
   trade_area_activity: boolean;
   home_locations_activity: boolean;
   distance: number;
+  hasTradeArea: boolean;
+  hasHomeZipcodes: boolean;
 }
+
+// Union type for location entities
+export type LocationEntity = Place | Competitor;
+
+// Type guards
+export const isPlace = (entity: LocationEntity): entity is Place => 'id' in entity;
+export const isCompetitor = (entity: LocationEntity): entity is Competitor => 'pid' in entity;
+
+// Utility functions
+export const getEntityId = (entity: LocationEntity): string =>
+  isPlace(entity) ? entity.id : entity.pid;
+
+export const getEntityState = (entity: LocationEntity): string =>
+  isPlace(entity) ? entity.state : entity.region;
+
+export const getEntityCategory = (entity: LocationEntity): string =>
+  isPlace(entity) ? entity.industry : entity.sub_category;
+
+export const getEntityDataAvailability = (entity: LocationEntity): DataAvailability => ({
+  hasTradeArea: isPlace(entity) ? entity.isTradeAreaAvailable : entity.trade_area_activity,
+  hasHomeZipcodes: isPlace(entity) ? entity.isHomeZipcodesAvailable : entity.home_locations_activity,
+});
 
 // Trade area types
 export interface TradeArea {

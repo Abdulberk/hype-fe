@@ -79,14 +79,11 @@ function LegendItem({ color, label, description }: LegendItemProps) {
 export default function Legend() {
   const { customerAnalysis, layerVisibility, selectedPlaces } = useUIStore();
   
-  // Get data from React Query hooks
   const myPlaceQuery = usePlaceQuery();
   
-  // Get home zipcodes for places that need them
   const homeZipcodePlaceIds = layerVisibility.homeZipcodes ? [layerVisibility.homeZipcodes] : [];
   const homeZipcodesQuery = useOnDemandHomeZipcodes(homeZipcodePlaceIds);
 
-  // Calculate percentiles for home zipcodes if needed
   const homeZipcodesPercentiles = useMemo(() => {
     if (customerAnalysis.dataType !== 'homeZipcodes' || !layerVisibility.homeZipcodes || !myPlaceQuery.data) {
       return null;
@@ -102,7 +99,6 @@ export default function Legend() {
     return percentiles;
   }, [customerAnalysis.dataType, layerVisibility.homeZipcodes, homeZipcodesQuery.data, myPlaceQuery.data]);
 
-  // Get visible trade area percentages
   const visibleTradeAreas = useMemo(() => {
     if (customerAnalysis.dataType !== 'tradeArea') return [];
     
@@ -116,7 +112,6 @@ export default function Legend() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {/* Places Legend */}
       <Paper elevation={1} sx={{ p: 2 }}>
         <Typography
           variant="h6"
@@ -146,7 +141,6 @@ export default function Legend() {
         </Typography>
         
         <Box sx={{ pl: 1 }}>
-          {/* My Place - Always bright green, 16px size */}
           <MarkerLegendItem
             color="#4CAF50"
             borderColor="rgba(255,255,255,1)"
@@ -154,7 +148,6 @@ export default function Legend() {
             description="Primary location (always visible)"
           />
           
-          {/* Competitor - Normal state, 16px size */}
           <MarkerLegendItem
             color="#2196F3"
             borderColor="rgba(255,255,255,1)"
@@ -162,7 +155,6 @@ export default function Legend() {
             description="Nearby business locations"
           />
           
-          {/* Selected state indicator, 16px size */}
           <MarkerLegendItem
             color="#FFD700"
             borderColor="rgba(255,140,0,1)"
@@ -176,7 +168,6 @@ export default function Legend() {
         </Typography>
       </Paper>
 
-      {/* Trade Areas Legend */}
       {customerAnalysis.dataType === 'tradeArea' && visibleTradeAreas.length > 0 && (
         <Paper elevation={1} sx={{ p: 2 }}>
           <Typography
@@ -248,7 +239,6 @@ export default function Legend() {
         </Paper>
       )}
 
-      {/* Home Zipcodes Legend */}
       {customerAnalysis.dataType === 'homeZipcodes' && homeZipcodesPercentiles && (
         <Paper elevation={1} sx={{ p: 2 }}>
           <Typography
@@ -308,7 +298,6 @@ export default function Legend() {
         </Paper>
       )}
 
-      {/* Empty State */}
       {(!customerAnalysis.isVisible ||
         (customerAnalysis.dataType === 'tradeArea' && visibleTradeAreas.length === 0) ||
         (customerAnalysis.dataType === 'homeZipcodes' && !homeZipcodesPercentiles)) && (

@@ -5,7 +5,7 @@ import type { TransformedPlace } from '../../lib/types/api';
 
 interface RadiusIndicatorProps {
   myPlace: TransformedPlace | null;
-  radius: number; // in km
+  radius: number;
   isVisible: boolean;
 }
 
@@ -15,14 +15,10 @@ export const useRadiusIndicator = ({ myPlace, radius, isVisible }: RadiusIndicat
       return null;
     }
 
-    // More accurate radius calculation for visualization
-    // 1 degree latitude = 111 km (approximately)
-    // 1 degree longitude = 111 km * cos(latitude) (varies by latitude)
     const lat = myPlace.latitude;
     const radiusInDegreesLat = radius / 111;
     const radiusInDegreesLng = radius / (111 * Math.cos(lat * Math.PI / 180));
     
-    // Use the larger of the two for a more conservative circle
     const radiusInDegrees = Math.max(radiusInDegreesLat, radiusInDegreesLng);
 
     return new ScatterplotLayer({
@@ -34,20 +30,18 @@ export const useRadiusIndicator = ({ myPlace, radius, isVisible }: RadiusIndicat
       filled: true,
       radiusScale: 1,
       radiusMinPixels: 10,
-      radiusMaxPixels: 2000, // Increase max for larger radius
+      radiusMaxPixels: 2000,
       lineWidthMinPixels: 2,
       lineWidthMaxPixels: 4,
       getPosition: (d: TransformedPlace) => [d.longitude, d.latitude],
-      // More accurate radius calculation in meters for deck.gl
-      getRadius: () => radius * 1000, // Convert km to meters for deck.gl
-      getFillColor: [33, 150, 243, 25], // Light blue with low alpha
-      getLineColor: [33, 150, 243, 120], // Blue border with medium alpha
+      getRadius: () => radius * 1000,
+      getFillColor: [33, 150, 243, 25],
+      getLineColor: [33, 150, 243, 120],
       getLineWidth: 2,
-      // Add animation properties
       transitions: {
         getRadius: {
           duration: 300,
-          easing: (t: number) => t * t * (3 - 2 * t), // Smooth ease
+          easing: (t: number) => t * t * (3 - 2 * t),
         },
         getFillColor: {
           duration: 200,
@@ -56,30 +50,26 @@ export const useRadiusIndicator = ({ myPlace, radius, isVisible }: RadiusIndicat
           duration: 200,
         },
       },
-      // Add pulsing effect
       updateTriggers: {
         getRadius: [radius],
         getFillColor: [radius],
         getLineColor: [radius],
       },
-      // Use geographic coordinate system for accurate radius
-      coordinateSystem: 1, // COORDINATE_SYSTEM.LNGLAT
+      coordinateSystem: 1,
       radiusUnits: 'meters',
     });
   }, [myPlace, radius, isVisible]);
 };
 
-// Alternative: More accurate radius circle using multiple points
 export const useAccurateRadiusIndicator = ({ myPlace, radius, isVisible }: RadiusIndicatorProps) => {
   return useMemo(() => {
     if (!myPlace || !isVisible || radius <= 0) {
       return null;
     }
 
-    // Create circle points around the center
     const createCirclePoints = (centerLng: number, centerLat: number, radiusKm: number, segments = 64): [number, number][] => {
       const points: [number, number][] = [];
-      const radiusInDegrees = radiusKm / 111; // Rough conversion
+      const radiusInDegrees = radiusKm / 111;
 
       for (let i = 0; i <= segments; i++) {
         const angle = (i * 2 * Math.PI) / segments;
@@ -112,7 +102,7 @@ export const useAccurateRadiusIndicator = ({ myPlace, radius, isVisible }: Radiu
       radiusMaxPixels: 3,
       getPosition: (d: CirclePoint) => d.position,
       getRadius: 50,
-      getFillColor: [33, 150, 243, 60], // Semi-transparent blue
+      getFillColor: [33, 150, 243, 60],
       transitions: {
         getFillColor: {
           duration: 300,

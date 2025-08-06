@@ -41,7 +41,6 @@ import type { TransformedCompetitor, TransformedTradeArea, TransformedHomeZipcod
 const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 export default function MapContainer() {
-  // Map style state - must be at the top level before any conditional returns
   const [mapStyle, setMapStyle] = useState(MAPBOX_STYLE);
 
   const {
@@ -66,14 +65,14 @@ export default function MapContainer() {
     setCompetitorLoadingMode
   } = useUIStore();
 
-  // React Query hooks for data fetching - use the default MY_PLACE_ID
+ 
   const myPlaceQuery = usePlaceQuery();
   
-  // Get competitors based on loading mode
+
   const viewportCompetitorsQuery = useViewportCompetitors(
     placeAnalysis.radius,
     placeAnalysis.industries.length > 0 ? placeAnalysis.industries : undefined,
-    undefined, // No limit - get all competitors in radius
+    undefined,
     {
       enabled: competitorLoadingMode === 'viewport'
     }
@@ -83,14 +82,14 @@ export default function MapContainer() {
     enabled: competitorLoadingMode === 'all'
   });
   
-  // Use the appropriate query based on loading mode
+
   const competitorsQuery = competitorLoadingMode === 'all' ? allCompetitorsQuery : viewportCompetitorsQuery;
 
-  // Get trade areas for selected places
+
   const selectedPlaceIds = Object.keys(selectedPlaces);
   const tradeAreasQuery = useOnDemandTradeAreas(selectedPlaceIds);
   
-  // Handle notification for places without trade areas
+  
   const [showNoTradeAreaAlert, setShowNoTradeAreaAlert] = useState(false);
   const [noTradeAreaMessage, setNoTradeAreaMessage] = useState('');
   
@@ -106,13 +105,13 @@ export default function MapContainer() {
     }
   }, [tradeAreasQuery.placesWithoutTradeAreas]);
 
-  // Get home zipcodes for selected places that need them
+ 
   const homeZipcodePlaceIds = Object.entries(selectedPlaces)
     .filter(([, place]) => place.showHomeZipcodes)
     .map(([pid]) => pid);
   const homeZipcodesQuery = useOnDemandHomeZipcodes(homeZipcodePlaceIds);
 
-  // Extract zipcode IDs from home zipcodes for polygon loading
+ 
   const homeZipcodeIds = useMemo(() => {
     if (!homeZipcodesQuery.data) return [];
     return homeZipcodesQuery.data.flatMap((hz: TransformedHomeZipcodes) =>
@@ -122,10 +121,10 @@ export default function MapContainer() {
 
   const zipcodesQuery = useSmartZipcodeLoader(homeZipcodeIds, 'visible');
 
-  // Combined loading state - only check essential queries for initial load
+
   const isLoading = isInitializing || myPlaceQuery.isLoading;
 
-  // Combined error state
+
   const apiError = DataStoreUtils.combineErrors(
     myPlaceQuery,
     competitorsQuery,
@@ -135,7 +134,7 @@ export default function MapContainer() {
   );
   const error = localError || apiError;
 
-  // Extract data from queries with proper memoization
+
   const myPlace = myPlaceQuery.data;
   
   const competitors = useMemo(() => competitorsQuery.data || [], [competitorsQuery.data]);
@@ -143,14 +142,14 @@ export default function MapContainer() {
   const homeZipcodes = useMemo(() => homeZipcodesQuery.data || [], [homeZipcodesQuery.data]);
   const zipcodes = useMemo(() => zipcodesQuery.data || [], [zipcodesQuery.data]);
 
-  // Handle initial loading state - set false as soon as primary data is available
+
   useEffect(() => {
     if (myPlaceQuery.isSuccess && isInitializing) {
       setInitializing(false);
     }
   }, [myPlaceQuery.isSuccess, isInitializing, setInitializing]);
 
-  // Update viewport bounds for competitor loading
+ 
   useEffect(() => {
     if (mapViewState) {
       const bounds = {
@@ -163,17 +162,15 @@ export default function MapContainer() {
     }
   }, [mapViewState, updateViewportBounds]);
 
-  // Filter competitors based on analysis filters (now done client-side for additional filtering)
+ 
   const filteredCompetitors = useMemo(() => {
     if (!myPlace || !placeAnalysis.isVisible) return [];
     
     let filtered = competitors;
-    
-    // Additional client-side radius filtering for safety (in case backend doesn't filter properly)
+
     if (competitorLoadingMode === 'viewport' && placeAnalysis.radius > 0) {
       filtered = filtered.filter((competitor: TransformedCompetitor) => {
-        // Calculate distance using Haversine formula
-        const R = 6371; // Earth's radius in km
+        const R = 6371;
         const dLat = (competitor.latitude - myPlace.latitude) * Math.PI / 180;
         const dLon = (competitor.longitude - myPlace.longitude) * Math.PI / 180;
         const a =
@@ -181,13 +178,12 @@ export default function MapContainer() {
           Math.cos(myPlace.latitude * Math.PI / 180) * Math.cos(competitor.latitude * Math.PI / 180) *
           Math.sin(dLon/2) * Math.sin(dLon/2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distance = R * c; // Distance in km
-        
+        const distance = R * c;
+
         return distance <= placeAnalysis.radius;
       });
     }
-    
-    // Additional industry filtering if needed (API handles most of this)
+
     if (placeAnalysis.industries.length > 0) {
       filtered = filterCompetitorsByIndustries(filtered, placeAnalysis.industries);
     }
@@ -195,47 +191,43 @@ export default function MapContainer() {
     return filtered;
   }, [competitors, myPlace, placeAnalysis, competitorLoadingMode]);
 
-  // Create DEDICATED MyPlace layer - ALWAYS visible, completely independent
+
   const myPlaceLayer = useMemo(() => {
     if (!myPlace) return null;
 
-    // Ensure we use REAL API data, not placeholder data
     const realMyPlaceData = {
-      ...myPlace, // This comes from API via usePlaceQuery
+      ...myPlace,
       isMyPlace: true,
-      position: [myPlace.longitude, myPlace.latitude] as [number, number]
+      position: [myPlace.longitude, myPlace.latitude]
     };
-
-    // Debug: Log to ensure we're using real API data
-    console.log('🏠 MyPlace Layer Data:', realMyPlaceData);
 
     return new ScatterplotLayer({
       id: 'myplace-layer',
       data: [realMyPlaceData],
       pickable: true,
-      opacity: 1.0, // Full opacity for maximum visibility
+      opacity: 1.0,
       stroked: true,
       filled: true,
       radiusScale: 12,
-      radiusMinPixels: 18, // Extra large minimum for far zoom visibility
-      radiusMaxPixels: 40, // Extra large maximum for close zoom presence
+      radiusMinPixels: 18,
+      radiusMaxPixels: 40,
       lineWidthMinPixels: 3,
       getPosition: (d: Place & { isMyPlace: boolean; position: [number, number] }) => d.position,
       getRadius: () => {
         const pid = myPlace.id;
         const isSelected = !!selectedPlaces[pid];
-        // MyPlace: ALWAYS prominently sized, even bigger when selected
-        return isSelected ? 32 : 26; // Very large base size
+        
+        return isSelected ? 32 : 26; 
       },
       getFillColor: () => {
-        // MyPlace: ALWAYS bright green, NEVER changes color
-        return [76, 175, 80, 255]; // Bright green with full opacity
+      
+        return [76, 175, 80, 255]; 
       },
       getLineColor: () => {
         const pid = myPlace.id;
         const isSelected = !!selectedPlaces[pid];
         
-        // Check if tooltip is open for MyPlace
+      
         let hasTooltipOpen = false;
         if (tooltip && tooltip.object) {
           const tooltipPid = 'id' in tooltip.object ? tooltip.object.id : null;
@@ -243,13 +235,10 @@ export default function MapContainer() {
         }
         
         if (hasTooltipOpen) {
-          // RED border for tooltip indication
           return [255, 0, 0, 255];
         } else if (isSelected) {
-          // Green glow when selected (matches fill)
           return [76, 175, 80, 255];
         } else {
-          // White contrast border for unselected MyPlace
           return [255, 255, 255, 255];
         }
       },
@@ -257,7 +246,7 @@ export default function MapContainer() {
         const pid = myPlace.id;
         const isSelected = !!selectedPlaces[pid];
         
-        // Check if tooltip is open for MyPlace
+       
         let hasTooltipOpen = false;
         if (tooltip && tooltip.object) {
           const tooltipPid = 'id' in tooltip.object ? tooltip.object.id : null;
@@ -265,9 +254,9 @@ export default function MapContainer() {
         }
         
         if (hasTooltipOpen) {
-          return 12; // Extra thick for tooltip indication
+          return 12;
         } else {
-          return isSelected ? 8 : 6; // Thick base border, even thicker when selected
+          return isSelected ? 8 : 6;
         }
       },
       onClick: (info: { object?: Place & { isMyPlace: boolean; position: [number, number] }; x: number; y: number }) => {
@@ -282,7 +271,7 @@ export default function MapContainer() {
     });
   }, [myPlace, selectedPlaces, tooltip, setTooltip]);
 
-  // Create competitors-only layer
+  
   const competitorsLayer = useMemo(() => {
     const data = filteredCompetitors.map((competitor: TransformedCompetitor) => ({
       ...competitor,
@@ -305,7 +294,7 @@ export default function MapContainer() {
       getRadius: (d: TransformedCompetitor & { isMyPlace: boolean; position: [number, number] }) => {
         const pid = d.pid;
         const isSelected = !!selectedPlaces[pid];
-        return isSelected ? 12 : 8; // Competitors: normal sizing
+        return isSelected ? 12 : 8;
       },
       getFillColor: (d: TransformedCompetitor & { isMyPlace: boolean; position: [number, number] }) => {
         const pid = d.pid;
@@ -313,10 +302,8 @@ export default function MapContainer() {
         const hasTooltipOpen = tooltip && tooltip.object && 'pid' in tooltip.object && tooltip.object.pid === pid;
         
         if (isSelected) {
-          // Selected competitors: Gold color
           return [255, 215, 0, 255];
         } else {
-          // Normal competitors: Blue
           const hex = COLOR_SCHEME.competitor.replace('#', '');
           const r = parseInt(hex.substr(0, 2), 16);
           const g = parseInt(hex.substr(2, 2), 16);
@@ -331,11 +318,11 @@ export default function MapContainer() {
         const hasTooltipOpen = tooltip && tooltip.object && 'pid' in tooltip.object && tooltip.object.pid === pid;
         
         if (hasTooltipOpen) {
-          return [255, 0, 0, 255]; // Red for tooltip
+          return [255, 0, 0, 255];
         } else if (isSelected) {
-          return [255, 140, 0, 255]; // Orange for selected
+          return [255, 140, 0, 255];
         } else {
-          return [255, 255, 255, 200]; // White for normal
+          return [255, 255, 255, 200];
         }
       },
       getLineWidth: (d: TransformedCompetitor & { isMyPlace: boolean; position: [number, number] }) => {
@@ -344,9 +331,9 @@ export default function MapContainer() {
         const hasTooltipOpen = tooltip && tooltip.object && 'pid' in tooltip.object && tooltip.object.pid === pid;
         
         if (hasTooltipOpen) {
-          return 6; // Thick for tooltip
+          return 6;
         } else {
-          return isSelected ? 3 : 2; // Normal thickness
+          return isSelected ? 3 : 2;
         }
       },
       onClick: (info: { object?: TransformedCompetitor & { isMyPlace: boolean; position: [number, number] }; x: number; y: number }) => {
@@ -361,21 +348,19 @@ export default function MapContainer() {
     });
   }, [filteredCompetitors, selectedPlaces, tooltip, setTooltip]);
 
-  // Create pulse layer for selected pins
+
   const pulseLayer = usePulseLayer({
     selectedPlaces: Object.values(selectedPlaces),
     myPlace: myPlace || null,
     filteredCompetitors
   });
 
-  // Create radius indicator layer (only show in viewport mode)
   const radiusIndicatorLayer = useRadiusIndicator({
     myPlace: myPlace || null,
     radius: placeAnalysis.radius,
     isVisible: competitorLoadingMode === 'viewport' && placeAnalysis.isVisible && !!myPlace
   });
 
-  // Create trade area layers
   const tradeAreaLayers = useMemo(() => {
     if (customerAnalysis.dataType !== 'tradeArea' || !customerAnalysis.isVisible) {
       return [];
@@ -383,7 +368,7 @@ export default function MapContainer() {
 
     const layers: PolygonLayer[] = [];
     
-    // Get visible trade areas from selected places
+   
     Object.entries(selectedPlaces).forEach(([pid, selectedPlace]) => {
       if (!selectedPlace.showTradeArea) return;
       
@@ -413,7 +398,6 @@ export default function MapContainer() {
             opacity = 0.5;
         }
 
-        // Convert rgba to RGB array
         const rgba = color.match(/rgba?\(([^)]+)\)/)?.[1]?.split(',').map(n => parseInt(n.trim()));
         const fillColor = rgba ? [...rgba.slice(0, 3), Math.floor(opacity * 255)] : [255, 152, 0, 128];
         
@@ -436,7 +420,7 @@ export default function MapContainer() {
     return layers;
   }, [customerAnalysis.dataType, customerAnalysis.isVisible, customerAnalysis.tradeAreaPercentages, selectedPlaces, tradeAreas]);
 
-  // Create home zipcodes layer
+
   const homeZipcodesLayer = useMemo(() => {
     if (
       customerAnalysis.dataType !== 'homeZipcodes' ||
@@ -454,7 +438,7 @@ export default function MapContainer() {
 
     const { percentiles } = calculatePercentiles(selectedPlaceHomeZipcodes.locations);
     
-    // Create zipcode polygon data with colors
+  
     const zipcodesToShow: Array<Zipcode & { percentage: number; fillColor: [number, number, number, number] }> = [];
     
     selectedPlaceHomeZipcodes.locations.forEach((location: Record<string, string>) => {
@@ -464,7 +448,6 @@ export default function MapContainer() {
         
         if (zipcode) {
           const color = getColorForValue(percentage, percentiles);
-          // Convert hex to RGB
           const hex = color.replace('#', '');
           const r = parseInt(hex.substr(0, 2), 16);
           const g = parseInt(hex.substr(2, 2), 16);
@@ -497,22 +480,22 @@ export default function MapContainer() {
   const layers = useMemo(() => {
     const allLayers = [];
     
-    // Layer ordering: bottom to top
+
     if (homeZipcodesLayer) {
-      allLayers.push(homeZipcodesLayer); // Bottom layer
+      allLayers.push(homeZipcodesLayer); 
     }
-    allLayers.push(...tradeAreaLayers); // Middle layers
+    allLayers.push(...tradeAreaLayers); 
     if (radiusIndicatorLayer) {
-      allLayers.push(radiusIndicatorLayer); // Radius indicator layer
+      allLayers.push(radiusIndicatorLayer); 
     }
     if (pulseLayer) {
-      allLayers.push(pulseLayer); // Pulse effect behind pins
+      allLayers.push(pulseLayer); 
     }
     if (competitorsLayer) {
-      allLayers.push(competitorsLayer); // Competitors layer
+      allLayers.push(competitorsLayer); 
     }
     if (myPlaceLayer) {
-      allLayers.push(myPlaceLayer); // MyPlace layer - ALWAYS ON TOP, ALWAYS VISIBLE
+      allLayers.push(myPlaceLayer); 
     }
     
     return allLayers.filter(Boolean);
@@ -609,9 +592,18 @@ export default function MapContainer() {
         initialViewState={mapViewState || DEFAULT_MAP_VIEW}
         controller={true}
         layers={layers}
-        onViewStateChange={({ viewState }) => setMapViewState(viewState as typeof DEFAULT_MAP_VIEW)}
+        onViewStateChange={({ viewState }) => {
+          if ('longitude' in viewState && 'latitude' in viewState && 'zoom' in viewState) {
+            setMapViewState({
+              longitude: viewState.longitude,
+              latitude: viewState.latitude,
+              zoom: viewState.zoom,
+              pitch: viewState.pitch ?? 0,
+              bearing: viewState.bearing ?? 0
+            });
+          }
+        }}
         onClick={(info) => {
-          // Close tooltip if clicking on empty space (no object)
           if (!info.object) {
             setTooltip(null);
           }
@@ -623,7 +615,7 @@ export default function MapContainer() {
         />
       </DeckGL>
 
-      {/* Map Controls */}
+  
       <MapControls
         mapViewState={mapViewState}
         setMapViewState={setMapViewState}
@@ -636,7 +628,7 @@ export default function MapContainer() {
       
       {tooltip && <PlaceTooltip tooltip={tooltip} />}
       
-      {/* Animated notification for places without trade area data */}
+    
       <Slide direction="down" in={showNoTradeAreaAlert} mountOnEnter unmountOnExit>
         <Box
           sx={{
@@ -713,7 +705,6 @@ export default function MapContainer() {
   );
 }
 
-// Map Controls Component
 interface MapControlsProps {
   mapViewState: typeof DEFAULT_MAP_VIEW | null;
   setMapViewState: (viewState: typeof DEFAULT_MAP_VIEW) => void;
@@ -735,7 +726,7 @@ function MapControls({
 }: MapControlsProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Zoom controls
+ 
   const handleZoomIn = () => {
     if (mapViewState) {
       setMapViewState({
@@ -754,7 +745,7 @@ function MapControls({
     }
   };
 
-  // Locate Me - Smooth cinematic transition to MyPlace
+
   const handleLocateMe = () => {
     if (!myPlace || !mapViewState) return;
 
@@ -767,11 +758,11 @@ function MapControls({
       bearing: 0
     };
 
-    // Smooth animation parameters
-    const duration = 2000; // 2 seconds
+  
+    const duration = 2000; 
     const startTime = Date.now();
 
-    // Easing function for smooth animation
+  
     const easeInOutCubic = (t: number): number => {
       return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
     };
@@ -781,7 +772,7 @@ function MapControls({
       const progress = Math.min(elapsed / duration, 1);
       const easedProgress = easeInOutCubic(progress);
 
-      // Interpolate between current and target values
+    
       const newViewState = {
         longitude: currentView.longitude + (targetView.longitude - currentView.longitude) * easedProgress,
         latitude: currentView.latitude + (targetView.latitude - currentView.latitude) * easedProgress,
@@ -792,17 +783,16 @@ function MapControls({
 
       setMapViewState(newViewState);
 
-      // Continue animation if not finished
+      
       if (progress < 1) {
         requestAnimationFrame(animate);
       }
     };
 
-    // Start the animation
     requestAnimationFrame(animate);
   };
 
-  // Fullscreen toggle
+
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -813,7 +803,7 @@ function MapControls({
     }
   };
 
-  // Map styles data
+
   const mapStyles = [
     {
       url: 'mapbox://styles/mapbox/streets-v12',
@@ -847,18 +837,18 @@ function MapControls({
     }
   ];
 
-  // Handle style change
+
   const handleMapStyleChange = (styleUrl: string) => {
     setMapStyle(styleUrl);
   };
 
-  // Get current style name
+ 
   const getCurrentStyleName = () => {
     const currentStyle = mapStyles.find(style => style.url === mapStyle);
     return currentStyle?.name || 'Streets';
   };
 
-  // Reset rotation
+
   const handleResetRotation = () => {
     if (mapViewState) {
       setMapViewState({
@@ -879,7 +869,7 @@ function MapControls({
 
   return (
     <>
-      {/* Top Right - Competitor Loading Mode Toggle */}
+     
       <Box
         sx={{
           position: 'absolute',
@@ -951,8 +941,7 @@ function MapControls({
         </Box>
       </Box>
 
-      {/* Top Left - Map Style Toggle */}
-      <Box
+          <Box
         sx={{
           position: 'absolute',
           top: '20px',
@@ -1006,7 +995,7 @@ function MapControls({
         </Box>
       </Box>
 
-      {/* Bottom Right - Zoom & Navigation Controls */}
+   
       <Box
         sx={{
           position: 'absolute',
@@ -1063,7 +1052,7 @@ function MapControls({
         </Tooltip>
       </Box>
 
-      {/* Bottom Left - Fullscreen Toggle */}
+  
       <Box
         sx={{
           position: 'absolute',

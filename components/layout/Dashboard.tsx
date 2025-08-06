@@ -16,7 +16,6 @@ export default function Dashboard() {
         backgroundColor: 'background.default',
       }}
     >
-      {/* Left Sidebar */}
       <Paper
         elevation={2}
         sx={{
@@ -32,7 +31,6 @@ export default function Dashboard() {
         <LeftSidebar />
       </Paper>
 
-      {/* Map Container */}
       <Box
         sx={{
           flex: 1,
@@ -44,7 +42,6 @@ export default function Dashboard() {
         <MapContainer />
       </Box>
 
-      {/* Right Sidebar */}
       <Paper
         elevation={2}
         sx={{

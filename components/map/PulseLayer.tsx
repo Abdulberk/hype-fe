@@ -20,7 +20,6 @@ interface PulseLayerProps {
 export function usePulseLayer({ selectedPlaces, myPlace, filteredCompetitors }: PulseLayerProps) {
   const [pulseRadius, setPulseRadius] = useState(20);
 
-  // Animate pulse effect
   useEffect(() => {
     const interval = setInterval(() => {
       setPulseRadius(prev => prev >= 35 ? 20 : prev + 1);
@@ -32,7 +31,6 @@ export function usePulseLayer({ selectedPlaces, myPlace, filteredCompetitors }: 
   const pulseLayer = useMemo(() => {
     const pulseData: PulseDataPoint[] = [];
     
-    // Add pulse for selected My Place
     if (myPlace && selectedPlaces.some(p => ('id' in p.place && p.place.id === myPlace.id) || p.place.name === myPlace.name)) {
       pulseData.push({
         ...myPlace,
@@ -41,7 +39,6 @@ export function usePulseLayer({ selectedPlaces, myPlace, filteredCompetitors }: 
       });
     }
     
-    // Add pulse for selected competitors
     filteredCompetitors.forEach(competitor => {
       if (selectedPlaces.some(p => ('pid' in p.place && p.place.pid === competitor.pid))) {
         pulseData.push({
@@ -67,14 +64,12 @@ export function usePulseLayer({ selectedPlaces, myPlace, filteredCompetitors }: 
       getPosition: (d: PulseDataPoint) => d.position,
       getRadius: pulseRadius,
       getFillColor: (_d: PulseDataPoint) => {
-        // All selected pins have yellow pulse effect
-        const baseColor = '#FFD700'; // Gold/Yellow
+        const baseColor = '#FFD700';
         const hex = baseColor.replace('#', '');
         const r = parseInt(hex.substr(0, 2), 16);
         const g = parseInt(hex.substr(2, 2), 16);
         const b = parseInt(hex.substr(4, 2), 16);
         
-        // Fade effect based on pulse radius
         const opacity = Math.max(0.1, 0.4 - (pulseRadius - 20) * 0.02);
         return [r, g, b, Math.floor(opacity * 255)];
       }

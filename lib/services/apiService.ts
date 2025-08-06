@@ -37,7 +37,7 @@ export const apiClient = axios.create({
 // Request interceptor for logging (development only)
 if (process.env.NODE_ENV === 'development') {
   apiClient.interceptors.request.use((config) => {
-    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    console.log(` API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   });
 }
@@ -46,7 +46,7 @@ if (process.env.NODE_ENV === 'development') {
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError) => {
-    console.error('❌ API Error:', error.response?.data || error.message);
+    console.error('API Error:', error.response?.data || error.message);
     throw error;
   }
 );
@@ -64,6 +64,8 @@ export const transformPlace = (apiPlace: ApiPlace): TransformedPlace => ({
   industry: apiPlace.industry,
   isTradeAreaAvailable: apiPlace.isTradeAreaAvailable,
   isHomeZipcodesAvailable: apiPlace.isHomeZipcodesAvailable,
+  hasTradeArea: apiPlace.isTradeAreaAvailable,
+  hasHomeZipcodes: apiPlace.isHomeZipcodesAvailable,
 });
 
 export const transformCompetitor = (apiCompetitor: ApiCompetitor): TransformedCompetitor => ({
@@ -79,6 +81,8 @@ export const transformCompetitor = (apiCompetitor: ApiCompetitor): TransformedCo
   trade_area_activity: apiCompetitor.trade_area_activity,
   home_locations_activity: apiCompetitor.home_locations_activity,
   distance: apiCompetitor.distance,
+  hasTradeArea: apiCompetitor.trade_area_activity,
+  hasHomeZipcodes: apiCompetitor.home_locations_activity,
 });
 
 export const transformTradeArea = (apiTradeArea: ApiTradeArea): TransformedTradeArea => ({
