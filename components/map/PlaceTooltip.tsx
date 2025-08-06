@@ -13,11 +13,11 @@ export default function PlaceTooltip({ tooltip }: PlaceTooltipProps) {
   const { customerAnalysis, selectedPlaces, layerVisibility, togglePlaceSelection } = useUIStore();
   
   // Determine if this is "My Place" or a competitor
-  const isMyPlace = 'id' in object || object.name === 'Starbucks'; // My place has 'id', competitors have 'pid'
-  const pid = 'pid' in object ? object.pid : object.id;
+  const isMyPlace = 'id' in object; // My place has 'id', competitors have 'pid'
+  const pid = isMyPlace ? (object as Place).id : (object as Competitor).pid;
   const isSelected = !!selectedPlaces[pid];
   
-  // Check data availability
+  // Check data availability with proper type assertions
   const hasTradeAreaData = isMyPlace
     ? (object as Place).isTradeAreaAvailable
     : (object as Competitor).trade_area_activity;
@@ -74,7 +74,7 @@ export default function PlaceTooltip({ tooltip }: PlaceTooltipProps) {
             mb: 1
           }}
         >
-          {isMyPlace ? '📍 My Place' : '🏢 Competitor'}
+          {isMyPlace ? ' My Place' : '🏢 Competitor'}
         </Typography>
         
         <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
@@ -88,8 +88,8 @@ export default function PlaceTooltip({ tooltip }: PlaceTooltipProps) {
         {/* Show industry/category */}
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
           {isMyPlace
-            ? `Industry: ${(object as Place).industry}`
-            : `Category: ${(object as Competitor).sub_category}`
+            ? `Industry: ${(object as Place).industry || 'Not specified'}`
+            : `Category: ${(object as Competitor).sub_category || 'Not specified'}`
           }
         </Typography>
         
