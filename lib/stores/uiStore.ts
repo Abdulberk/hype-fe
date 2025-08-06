@@ -13,6 +13,9 @@ import {
 import { DEFAULT_FILTERS, DEFAULT_MAP_VIEW } from '../constants';
 import { useDataStore } from './dataStore';
 
+// Import MyPlace ID constant
+const MY_PLACE_ID = 'c660833d-77f0-4bfa-b8f9-4ac38f43ef6a';
+
 export const useUIStore = create<UIStore>()((set, _get) => ({
   placeAnalysis: DEFAULT_FILTERS.placeAnalysis,
   customerAnalysis: DEFAULT_FILTERS.customerAnalysis,
@@ -44,37 +47,81 @@ export const useUIStore = create<UIStore>()((set, _get) => ({
       const updatedSelectedPlaces = { ...state.selectedPlaces };
       const updatedLayerVisibility = { ...state.layerVisibility };
       
-      Object.entries(state.selectedPlaces).forEach(([pid, selectedPlace]) => {
-        const showTradeArea = newCustomerAnalysis.dataType === 'tradeArea' && newCustomerAnalysis.isVisible;
-        const showHomeZipcodes = newCustomerAnalysis.dataType === 'homeZipcodes' && newCustomerAnalysis.isVisible;
+      // Case Study Requirement: When Home Zipcodes is selected, hide all trade areas and show only MyPlace home zipcodes
+      if (newCustomerAnalysis.dataType === 'homeZipcodes' && newCustomerAnalysis.isVisible) {
+        // Clear all trade areas
+        updatedLayerVisibility.tradeAreas = {};
         
-        // Update selected place visibility flags
-        updatedSelectedPlaces[pid] = {
-          ...selectedPlace,
-          showTradeArea,
-          showHomeZipcodes
-        };
+        // Set home zipcodes to show only MyPlace
+        updatedLayerVisibility.homeZipcodes = MY_PLACE_ID;
         
-        // Update layer visibility accordingly
-        if (showTradeArea) {
-          updatedLayerVisibility.tradeAreas = {
-            ...updatedLayerVisibility.tradeAreas,
-            [pid]: true
+        // Update all selected places: disable trade areas, enable home zipcodes only for MyPlace
+        Object.entries(state.selectedPlaces).forEach(([pid, selectedPlace]) => {
+          updatedSelectedPlaces[pid] = {
+            ...selectedPlace,
+            showTradeArea: false,
+            showHomeZipcodes: pid === MY_PLACE_ID
           };
-        } else {
-          delete updatedLayerVisibility.tradeAreas[pid];
-        }
+        });
         
-        if (showHomeZipcodes) {
-          // For home zipcodes, only one place can be shown at a time
-          // Use the first selected place that supports home zipcodes
-          if (!updatedLayerVisibility.homeZipcodes) {
-            updatedLayerVisibility.homeZipcodes = pid;
-          }
-        } else if (updatedLayerVisibility.homeZipcodes === pid) {
-          updatedLayerVisibility.homeZipcodes = null;
+        // Ensure MyPlace is added to selectedPlaces if not already there
+        if (!updatedSelectedPlaces[MY_PLACE_ID]) {
+          // Create a proper Place object for MyPlace
+          // The actual place data will be fetched by React Query hooks when needed
+          const myPlaceObject: Place = {
+            id: MY_PLACE_ID,
+            name: 'MyPlace',
+            street_address: '',
+            city: '',
+            state: '',
+            logo: null,
+            latitude: 0, // Will be updated when actual data loads
+            longitude: 0, // Will be updated when actual data loads
+            industry: 'MyPlace',
+            isTradeAreaAvailable: false,
+            isHomeZipcodesAvailable: true
+          };
+          
+          updatedSelectedPlaces[MY_PLACE_ID] = {
+            place: myPlaceObject,
+            showTradeArea: false,
+            showHomeZipcodes: true
+          };
         }
-      });
+      } else {
+        // Normal behavior for other data types
+        Object.entries(state.selectedPlaces).forEach(([pid, selectedPlace]) => {
+          const showTradeArea = newCustomerAnalysis.dataType === 'tradeArea' && newCustomerAnalysis.isVisible;
+          const showHomeZipcodes = newCustomerAnalysis.dataType === 'homeZipcodes' && newCustomerAnalysis.isVisible;
+          
+          // Update selected place visibility flags
+          updatedSelectedPlaces[pid] = {
+            ...selectedPlace,
+            showTradeArea,
+            showHomeZipcodes
+          };
+          
+          // Update layer visibility accordingly
+          if (showTradeArea) {
+            updatedLayerVisibility.tradeAreas = {
+              ...updatedLayerVisibility.tradeAreas,
+              [pid]: true
+            };
+          } else {
+            delete updatedLayerVisibility.tradeAreas[pid];
+          }
+          
+          if (showHomeZipcodes) {
+            // For home zipcodes, only one place can be shown at a time
+            // Use the first selected place that supports home zipcodes
+            if (!updatedLayerVisibility.homeZipcodes) {
+              updatedLayerVisibility.homeZipcodes = pid;
+            }
+          } else if (updatedLayerVisibility.homeZipcodes === pid) {
+            updatedLayerVisibility.homeZipcodes = null;
+          }
+        });
+      }
       
       return {
         customerAnalysis: newCustomerAnalysis,
